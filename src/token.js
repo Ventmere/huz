@@ -1,0 +1,10 @@
+export const EOF                    = 'EOF';
+export const TEXT                   = 'TEXT';
+export const PARTIAL                = 'PARTIAL';
+export const INVERTED_SECTION_OPEN  = 'INVERTED_SECTION_OPEN';
+export const SECTION_OPEN           = 'SECTION_OPEN';
+export const SECTION_CLOSE          = 'SECTION_CLOSE';
+export const UNESCAPED_VARIABLE     = 'UNESCAPED_VARIABLE';
+export const COMMENT                = 'COMMENT';
+export const VARIABLE               = 'VARIABLE';
+export const DELIMITER_CHANGE 			= 'DELIMITER_CHANGE';
