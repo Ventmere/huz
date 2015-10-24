@@ -3,7 +3,7 @@ import * as nodeTypes from './node';
 import { Tokenizer } from './tokenizer';
 
 export class Parser {
-  constructor(filename, opts = {}) {
+  constructor(filename = '', opts = {}) {
     this._delimiters = opts.delimiters ? opts.delimiters : ["{{", "}}"];
 
     this._error = null;
@@ -50,9 +50,7 @@ export class Parser {
 
   _makeLocation(beginLocation, endLocation) {
     const location = this._clone(beginLocation);
-    if (this._filename) {
-      location.filename = this._filename;
-    }
+    location.filename = this._filename;
     if (endLocation) {
       location.endIndex = endLocation.endIndex;
       location.endLine = endLocation.endLine;

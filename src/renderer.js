@@ -3,7 +3,8 @@ import escapeHTML from 'escape-html';
 import { Parser } from './parser';
 
 const REPEATER_NODE_TYPE  = '_REPEATER';
-const MAX_PARTIAL_RECURSION = 10;
+const MAX_PARTIAL_STACK = 10;
+const MAX_LAMBDA_STACK = 255;
 
 export class Renderer {
   constructor(root, opts = {}) {
@@ -15,6 +16,7 @@ export class Renderer {
     this._stack = null;
     this._contextStack = null;
     this._partialStack = null;
+    this._lambdaStack = null;
     this._error = null;
   }
 
@@ -26,6 +28,7 @@ export class Renderer {
     this._stack = [];
     this._contextStack = [];
     this._partialStack = [];
+    this._lambdaStack = [];
 
     this._pushContext(context);
 
@@ -132,6 +135,11 @@ export class Renderer {
           this._popNode();
           this._expandLambda(node);
           break;
+
+        default:
+          //ignore unknown nodes
+          this._popNode();
+          break;
       }
 
       this._checkStacks();
@@ -165,10 +173,19 @@ export class Renderer {
     });
   }
 
-  _pushPartial(name, indent = '') {
+  _pushPartial({ name, indent, location }) {
     this._partialStack.push({
       name,
-      indent,
+      indent: indent || '',
+      location,
+      sp: this._stack.length
+    });
+  }
+
+  _pushLambda({ name, location }) {
+    this._lambdaStack.push({
+      name,
+      location,
       sp: this._stack.length
     });
   }
@@ -188,6 +205,10 @@ export class Renderer {
     //console.log('PARTIAL STACK:', this._partialStack);
     if (this._partialStack.length > 0 && this._stack.length === this._partialStack[this._partialStack.length - 1].sp) {
       this._partialStack.pop();
+    }
+
+    if (this._lambdaStack.length > 0 && this._stack.length === this._lambdaStack[this._lambdaStack.length - 1].sp) {
+      this._lambdaStack.pop();
     }
   }
 
@@ -228,12 +249,12 @@ export class Renderer {
       return;
     }
 
-    this._pushPartial(name, node.indent);
+    this._pushPartial(node);
 
-    if (this._partialStack.length > MAX_PARTIAL_RECURSION) {
+    if (this._partialStack.length > MAX_PARTIAL_STACK) {
       this._setError(
-        'Partial stack overflow: ' +
-          this._partialStack.map(f => f.name).concat([name]).join(' -> '),
+        'Possible partial short circuit: ' +
+          this._partialStack.map(f => `${f.name}@${f.location.filename}:${f.location.line}`).concat([name]).join(' -> '),
         node.location
       );
       return;
@@ -254,13 +275,26 @@ export class Renderer {
   }
 
   _expandLambda(node, lambda) {
+    const { name } = node;
+
+    this._pushLambda(node);
+
+    if (this._lambdaStack.length > MAX_LAMBDA_STACK) {
+      this._setError(
+        'Possible lambda short circuit: ' +
+          this._lambdaStack.map(f => `${f.name}@${f.location.filename}:${f.location.line+1}`).concat([name]).join(' -> '),
+        node.location
+      );
+      return;
+    }
+
     let ast;
     let skipped = false;
     if (node.type === nodeTypes.VARIABLE) {
       const code = lambda();
       if (code) {
         //A lambda's return value should parse with the default delimiters.
-        const parser = new Parser('[lambda return value]');
+        const parser = new Parser('[lambda]');
         ast = parser.parse('' + code);
         if (!node.unescaped) {
           //Lambda results should be appropriately escaped.
@@ -278,7 +312,7 @@ export class Renderer {
       if (code) {
         //Lambdas used for inverted sections should be considered truthy.
         //Lambdas used for sections should parse with the current delimiters.
-        const parser = new Parser('[lambda]', {
+        const parser = new Parser('[#lambda]', {
           delimiters: this._delimiters.slice(0)
         });
         ast = parser.parse('' + code);

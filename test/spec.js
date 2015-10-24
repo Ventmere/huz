@@ -29,10 +29,8 @@ describe('Specification', () => {
   ['comments', 'delimiters', 'interpolation', 'inverted', 'partials', 'sections']
     .forEach(name => defineTests(name));
 
-  //reset env for Interpolation - Multiple Calls when using test:watch
-  expect.count = expect.count ? expect.count + 1 : 1;
-  if (expect.count !== 1) {
-    delete g.calls;
+  if (global.g && global.g.calls) {
+    delete global.g.calls; //Interpolation - Multiple Calls: clear env
   }
 
   defineTests('~lambdas', test => {
