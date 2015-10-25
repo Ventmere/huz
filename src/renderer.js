@@ -6,10 +6,37 @@ const REPEATER_NODE_TYPE  = '_REPEATER';
 const MAX_PARTIAL_STACK = 10;
 const MAX_LAMBDA_STACK = 255;
 
+class RenderContext {
+  constructor(renderer) {
+    this._renderer = renderer;
+  }
+
+  evaluate(name) {
+    return this._renderer._evaluate(name);
+  }
+
+  pushNodes(nodes, reversed) {
+    this._renderer._pushNodes(nodes, reversed);
+  }
+
+  pushContext(ctx) {
+    this._pushContext(ctx);
+  }
+}
+
 export class Renderer {
   constructor(root, opts = {}) {
     this._partials = opts.partials || {};
     this._delimiters = opts.delimiters ? opts.delimiters : ['{{', '}}'];
+
+    if (opts.extensions) {
+      this._renderContext = new RenderContext(this);
+      this._extensions = opts.extensions.map(c => new c())
+      //modify tree
+      this._extensions.forEach(e => {
+        visit(root, e);
+      });
+    }
 
     this._partialCached = {};
     this._root = root;
@@ -51,7 +78,7 @@ export class Renderer {
       let value;
       switch (node.type) {
         case nodeTypes.VARIABLE:
-          value = this._getValue(node.name);
+          value = this._evaluate(node.name);
           if (isFunction(value)) {
             this._popNode();
             this._expandLambda(node, value);
@@ -64,7 +91,7 @@ export class Renderer {
           break;
 
         case nodeTypes.SECTION:
-          value = this._getValue(node.name);
+          value = this._evaluate(node.name);
           if (isFunction(value)) {
             this._popNode();
             this._expandLambda(node, value);
@@ -137,8 +164,12 @@ export class Renderer {
           break;
 
         default:
-          //ignore unknown nodes
           this._popNode();
+          if (this._extensions) {
+            this._extensions.forEach(e => {
+              e.handle(node, this._renderContext);
+            });
+          }
           break;
       }
 
@@ -212,7 +243,7 @@ export class Renderer {
     }
   }
 
-  _getValue(name) {
+  _evaluate(name) {
     if (name === '.') {
       return this._contextStack[this._contextStack.length - 1].context;
     }
@@ -347,6 +378,23 @@ function walk(root, modifier) {
     modifier(node);
     if (node.children !== undefined) {
       stack = stack.concat(node.children.slice(0).reverse());
+    }
+  }
+}
+
+function visit(root, visitor) {
+  let stack = [root];
+  while (stack.length) {
+    const parent = stack.pop();
+    for (let i = 0; i < parent.children.length; i++) {
+      const child = parent.children[i];
+      const modified = visitor.visit(child) || child;
+      if (modified !== child) {
+        parent.children[i] = modified;
+      }
+      if (child.children && child.children.length) {
+        stack.push(child);
+      }
     }
   }
 }

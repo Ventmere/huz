@@ -1,8 +1,9 @@
 import { Parser } from './parser';
 import { Renderer } from './renderer';
+import * as NodeType from './node';
 
 export { Tokenizer } from './tokenizer';
-export { Parser, Renderer };
+export { Parser, Renderer, NodeType };
 
 export function parse(src, opts) {
   const parser = new Parser(opts);

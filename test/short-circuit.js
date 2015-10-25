@@ -1,9 +1,9 @@
 import { render } from '../src';
 import { expect } from 'chai';
 
-describe.only('renderer', () => {
+describe('Short Circuit', () => {
 
-  it('partial short circuit', () => {
+  it('partial', () => {
     expect(() => {
       render(`{{>p}}`, {}, {
         partials: {
@@ -13,7 +13,7 @@ describe.only('renderer', () => {
     }).to.throw(/Possible partial short circuit/);
   });
 
-  it('lambda short circuit', () => {
+  it('lambda', () => {
     expect(() => {
       render(`{{lambda}}`, {
         lambda: function () {

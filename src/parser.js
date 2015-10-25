@@ -2,6 +2,10 @@ import * as tokenTypes from './token';
 import * as nodeTypes from './node';
 import { Tokenizer } from './tokenizer';
 
+export class ParserContext {
+  
+}
+
 export class Parser {
   constructor(filename = '', opts = {}) {
     this._delimiters = opts.delimiters ? opts.delimiters : ["{{", "}}"];
