@@ -1,6 +1,8 @@
 import * as nodeTypes from './node';
 import escapeHTML from 'escape-html';
 import { Parser } from './parser';
+import { walk, visit } from './helpers';
+import { instantiateAll } from './extension';
 
 const REPEATER_NODE_TYPE  = '_REPEATER';
 const MAX_PARTIAL_STACK = 10;
@@ -22,33 +24,35 @@ class RenderContext {
   pushContext(ctx) {
     this._pushContext(ctx);
   }
+
+  parsePartial(name) {
+    return this._renderer._parsePartial(name);
+  }
+
+  expandPartial(node) {
+    return this._renderer._expandPartial(node);
+  }
+
+  throw(message) {
+    return this._renderer._throw(message);
+  }
 }
 
 export class Renderer {
-  constructor(root, opts = {}) {
+  constructor(src, opts = {}) {
     this._partials = opts.partials || {};
     this._delimiters = opts.delimiters ? opts.delimiters : ['{{', '}}'];
-
-    if (opts.extensions) {
+    this._extensions = opts.extensions || instantiateAll();
+    if (this._extensions.length > 0) {
       this._renderContext = new RenderContext(this);
-      this._extensions = opts.extensions.map(c => new c())
-      //modify tree
-      this._extensions.forEach(e => {
-        visit(root, e);
-      });
     }
 
     this._partialCached = {};
-    this._root = root;
+    this._root = this._parse(src);
     this._stack = null;
     this._contextStack = null;
     this._partialStack = null;
     this._lambdaStack = null;
-    this._error = null;
-  }
-
-  get error() {
-    return this._error;
   }
 
   render(context) {
@@ -64,7 +68,7 @@ export class Renderer {
 
     let out = '';
     let newline = true;
-    while (this._error === null && this._stack.length > 0) {
+    while (this._stack.length > 0) {
       const node = this._stack[this._stack.length - 1];
       const partial = this._partialStack.length ? this._partialStack[this._partialStack.length - 1] : null;
 
@@ -158,16 +162,11 @@ export class Renderer {
           }
           break;
 
-        case LAMBDA_NODE_TYPE:
-          this._popNode();
-          this._expandLambda(node);
-          break;
-
         default:
           this._popNode();
           if (this._extensions) {
-            this._extensions.forEach(e => {
-              e.handle(node, this._renderContext);
+            this._extensions.forEach(ext => {
+              ext.handleNode(node, this._renderContext);
             });
           }
           break;
@@ -177,6 +176,12 @@ export class Renderer {
       newline = out.length === 0 || (out[out.length -1 ] === '\n');
     }
     return out;
+  }
+
+  _parse(src, opts = {}) {
+    opts.extensions = this._extensions;
+    const parser = new Parser(opts);
+    return parser.parse(src);
   }
 
   _pushNodes(list, reversed = false) {
@@ -274,6 +279,14 @@ export class Renderer {
     return '';
   }
 
+  _parsePartial(name) {
+    if (!this._partials.hasOwnProperty(name)) {
+      return null;
+    }
+
+    return this._parse(this._partials[name], { name })
+  }
+
   _expandPartial(node) {
     const { name } = node;
     if (!this._partials.hasOwnProperty(name)) {
@@ -283,25 +296,19 @@ export class Renderer {
     this._pushPartial(node);
 
     if (this._partialStack.length > MAX_PARTIAL_STACK) {
-      this._setError(
+      this._throw(
         'Possible partial short circuit: ' +
-          this._partialStack.map(f => `${f.name}@${f.location.filename}:${f.location.line}`).concat([name]).join(' -> '),
+          this._partialStack.map(f => `${f.name}@${f.location.filename}:${f.location.line+1}`).concat([name]).join(' -> '),
         node.location
       );
-      return;
     }
 
     if (this._partialCached.hasOwnProperty(name)) {
       this._pushNodes(this._partialCached[name], true);
     } else {
-      const parser = new Parser(name);
-      const ast = parser.parse(this._partials[name]);
-      if (ast !== null) {
-        const nodesReversed = this._partialCached[name] = ast.children.slice(0).reverse();
-        this._pushNodes(nodesReversed, true);
-      } else {
-        this._error = parser.error;
-      }
+      const ast = this._parsePartial(name);
+      const nodesReversed = this._partialCached[name] = ast.children.slice(0).reverse();
+      this._pushNodes(nodesReversed, true);
     }
   }
 
@@ -311,12 +318,11 @@ export class Renderer {
     this._pushLambda(node);
 
     if (this._lambdaStack.length > MAX_LAMBDA_STACK) {
-      this._setError(
+      this._throw(
         'Possible lambda short circuit: ' +
           this._lambdaStack.map(f => `${f.name}@${f.location.filename}:${f.location.line+1}`).concat([name]).join(' -> '),
         node.location
       );
-      return;
     }
 
     let ast;
@@ -325,8 +331,7 @@ export class Renderer {
       const code = lambda();
       if (code) {
         //A lambda's return value should parse with the default delimiters.
-        const parser = new Parser('[lambda]');
-        ast = parser.parse('' + code);
+        ast = this._parse('' + code, { name: '[lambda]' });
         if (!node.unescaped) {
           //Lambda results should be appropriately escaped.
           walk(ast, node => {
@@ -343,58 +348,27 @@ export class Renderer {
       if (code) {
         //Lambdas used for inverted sections should be considered truthy.
         //Lambdas used for sections should parse with the current delimiters.
-        const parser = new Parser('[#lambda]', {
+        ast = this._parse('' + code, {
+          name: '[#lambda]',
           delimiters: this._delimiters.slice(0)
         });
-        ast = parser.parse('' + code);
       } else {
         skipped = true;
       }
     }
 
     if (!skipped) {
-      if (ast !== null) {
-        this._pushNodes(ast.children);
-      } else {
-        this._error = parser.error;
-      }
+      this._pushNodes(ast.children);
     }
   }
 
-  _setError(message, location) {
-    this._error = new Error(message);
-    this._error.location = location;
+  _throw(message, location) {
+    const e = new Error(message);
+    e.location = location;
+    throw e;
   }
 }
 
 function isFunction(x) {
   return Object.prototype.toString.call(x) == '[object Function]';
-}
-
-function walk(root, modifier) {
-  let stack = root.children.slice(0).reverse();
-  while (stack.length) {
-    const node = stack.pop();
-    modifier(node);
-    if (node.children !== undefined) {
-      stack = stack.concat(node.children.slice(0).reverse());
-    }
-  }
-}
-
-function visit(root, visitor) {
-  let stack = [root];
-  while (stack.length) {
-    const parent = stack.pop();
-    for (let i = 0; i < parent.children.length; i++) {
-      const child = parent.children[i];
-      const modified = visitor.visit(child) || child;
-      if (modified !== child) {
-        parent.children[i] = modified;
-      }
-      if (child.children && child.children.length) {
-        stack.push(child);
-      }
-    }
-  }
 }
