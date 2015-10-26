@@ -1,10 +1,9 @@
 const registry = [];
 
 export class Extension {
-  constructor() {
-    this._stack = [];
-  }
-  
+  //called by tokenizer
+  transformToken(token) { return token; }
+
   //called by parser
   handleToken(token, parserContext) { }
   

@@ -1,25 +1,20 @@
-import { compile } from '../src';
-import { Inheritance } from '../src/extensions/inheritance';
-
-const code =
-`{{! mypage.mustache }}
-{{<base}}
-  {{$header}}
-    {{<header}}
-      {{$title}}My page title{{/title}}
-    {{/header}}
-  {{/header}}
-
-  {{$content}}
-    <h1>Hello world</h1>
-  {{/content}}
-{{/base}}`;
+import { render } from '../src';
+import { defineTests } from './spec';
 
 describe('Extension: Inheritance', () => {
 
-  it.only('test', () => {
-    const r = compile(code);
-    console.log(r.render({}));
-  });
+  //defineTests('inheritance', require('./inheritance.json'));
+
+  it.skip('test', () => {
+    const out = render('{{<include}}{{/include}} ', {}, {
+      partials: {
+      include: "{{$foo}}default content{{/foo}}"
+      },
+    });
+
+    for (let i = 0; i < out.length; i++) {
+      console.log(i, out[i], out.charCodeAt(i));
+    }
+  })
 
 });

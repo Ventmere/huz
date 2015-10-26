@@ -1,4 +1,5 @@
-import * as tokenTypes from './token';
+import * as TokenType from './token';
+import { instantiateAll } from './extension';
 
 const STATE_NONE        = 'STATE_NONE';
 const STATE_EOF         = 'STATE_EOF';
@@ -11,6 +12,7 @@ const DELIMITER_RIGHT = 1;
 
 export class Tokenizer {
   constructor(src, opts = {}) {
+    this._extensions = opts.extensions || instantiateAll();
     this._src = src;
     this._index = 0;
     this._char = null;
@@ -100,7 +102,7 @@ export class Tokenizer {
   _handleEOF() {
     this._handleStandaloneTag();
     this._makeToken({ 
-      type: tokenTypes.EOF
+      type: TokenType.EOF
     });
   }
 
@@ -110,7 +112,7 @@ export class Tokenizer {
     this._skipAllWhitespaces();
 
     if (this._char === null) {
-      this._makeError('Unclosed tag.');
+      this._setError('Unclosed tag.');
     }
     else if (this._isDelimiter(DELIMITER_RIGHT)) {
       this._handleEmptyTag();
@@ -126,14 +128,14 @@ export class Tokenizer {
         }
 
         if (this._char === null) {
-          this._makeError('Unclosed tag.');
+          this._setError('Unclosed tag.');
         } else {
           const content = this._src.slice(tagContentStart, this._index - 1);
           switch (tagTypeChar) {
-            case '>': this._handleSimpleTag(tokenTypes.PARTIAL, content); break;
-            case '^': this._handleSimpleTag(tokenTypes.INVERTED_SECTION_OPEN, content); break;
-            case '#': this._handleSimpleTag(tokenTypes.SECTION_OPEN, content); break;
-            case '/': this._handleSimpleTag(tokenTypes.SECTION_CLOSE, content); break;
+            case '>': this._handleSimpleTag(TokenType.PARTIAL, content); break;
+            case '^': this._handleSimpleTag(TokenType.INVERTED_SECTION_OPEN, content); break;
+            case '#': this._handleSimpleTag(TokenType.SECTION_OPEN, content); break;
+            case '/': this._handleSimpleTag(TokenType.SECTION_CLOSE, content); break;
 
             case '!':
               this._handleComment(content.substr(1));
@@ -165,12 +167,12 @@ export class Tokenizer {
   _handleDelimiterChange(content) {
     const newDelimiters = extractNewDelimiters(content);
     if (newDelimiters === null) {
-      this._makeError('Invalid change delimiter syntax.');
+      this._setError('Invalid change delimiter syntax.');
     } else {
       const [ left, right ] = newDelimiters;
       this._delimiters = newDelimiters;
       this._makeToken({
-        type: tokenTypes.DELIMITER_CHANGE,
+        type: TokenType.DELIMITER_CHANGE,
         delimiters: [ left, right ]
       });
     }
@@ -182,7 +184,7 @@ export class Tokenizer {
 
   _handleComment(content) {
     this._makeToken({
-      type: tokenTypes.COMMENT,
+      type: TokenType.COMMENT,
       content
     });
   }
@@ -192,16 +194,16 @@ export class Tokenizer {
     const begin = this._index - 1;
     const d = this._distance('}');
     if (d === -1) {
-      this._makeError('Unclosed variable tag: missingright curly.');
+      this._setError('Unclosed variable tag: missingright curly.');
     } else {
       const content = this._src.slice(begin, begin + d);
       this._skip(d + 1); //skip '}'
       this._skipAllWhitespaces();
       if (!this._isDelimiter(DELIMITER_RIGHT)) {
-        this._makeError('Unclosed variable: missing right delimiter.');
+        this._setError('Unclosed variable: missing right delimiter.');
       } else {
         this._makeToken({
-          type: tokenTypes.UNESCAPED_VARIABLE,
+          type: TokenType.UNESCAPED_VARIABLE,
           name: content.trim()
         });
       }
@@ -210,14 +212,14 @@ export class Tokenizer {
 
   _handleEmptyTag() {
     this._makeToken({
-      type: tokenTypes.VARIABLE,
+      type: TokenType.VARIABLE,
       name: ''
     });
   }
 
   _handleVariable(content, unescaped) {
     this._makeToken({
-      type: unescaped ? tokenTypes.UNESCAPED_VARIABLE : tokenTypes.VARIABLE,
+      type: unescaped ? TokenType.UNESCAPED_VARIABLE : TokenType.VARIABLE,
       name: content.trim()
     });
   }
@@ -241,7 +243,7 @@ export class Tokenizer {
     } while (!done);
 
     this._makeToken({
-      type: tokenTypes.TEXT,
+      type: TokenType.TEXT,
       text: this._src.slice(index, index + length)
     });
 
@@ -250,7 +252,7 @@ export class Tokenizer {
 
   _handleTextBreak() {
     this._makeToken({
-      type: tokenTypes.TEXT,
+      type: TokenType.TEXT,
       text: '\n'
     });
     this._read();
@@ -259,36 +261,97 @@ export class Tokenizer {
   }
 
   _handleStandaloneTag() {
+    const tokens = this._tokens;
+    const count = tokens.length;
+
+    if (count === 0) {
+      return;
+    }
+
+    let open = null;
+    let inline = 0;
     let standalone = true;
-    let tag = null;
-    let indent = '';
-    for (let i = 0; standalone && i < this._tokens.length; i++) {
-      const token = this._tokens[i];
+    let indentTokens = [];
+    for (let i = 0; standalone && i < count; i++) {
+      const token = tokens[i];
+      let idx;
       switch (token.type) {
-        case tokenTypes.VARIABLE:
-        case tokenTypes.UNESCAPED_VARIABLE:
+        case TokenType.VARIABLE:
+        case TokenType.UNESCAPED_VARIABLE:
           standalone = false;
           break;
-        case tokenTypes.TEXT:
-          standalone = isStringWhitespace(token.text);
-          if (standalone && tag === null) {
-            indent = indent + token.text;
+        case TokenType.TEXT:
+          if (isStringWhitespace(token.text) && inline === 0) {
+            indentTokens.push(token);
+          } else {
+            standalone = false;
           }
           break;
-        default:
-          standalone = (tag === null);
-          if (standalone) {
-            tag = token;
+        case TokenType.DELIMITER_CHANGE:
+        case TokenType.COMMENT:
+          if (open !== null) {
+            open.push(token);
+          } else {
+            inline ++;
           }
           break;
+        case TokenType.SECTION_CLOSE:
+          if (open) {
+            if (open[0].name === token.name) {
+              open = null;
+            } else {
+              standalone = false;
+            }
+          } else {
+            inline ++;
+          }
+          break;
+        default: //section-like tags
+          if (open === null) {
+            open = [token];
+            inline ++;
+          } else {
+            standalone = false;
+          }
+          break;
+      }
+
+      if (inline > 1) {
+        standalone = false;
       }
     }
-    if (standalone && tag) {
-      if (tag.type === tokenTypes.PARTIAL) {
-        tag.indent = indent;
+
+    if (open && open.length > 1) {
+      standalone = false;
+    }
+    
+    if (standalone) {
+      console.log('T', tokens);
+      //all whitespace
+      if (indentTokens.length === count) {
+        return;
       }
-      this._tokens = [tag];
-    };
+
+      let tailWSNodeCount = 0;
+      for (let i = count - 1; i >= 0; i--) {
+        const token = tokens[i];
+        if (token.type == TokenType.TEXT && isStringWhitespace(token.text)) {
+          tailWSNodeCount ++;
+        } else {
+          break;
+        }
+      }
+
+      if (indentTokens.length > 0 || tailWSNodeCount > 0) {
+        //trim
+        this._tokens = tokens.slice(indentTokens.length, count - tailWSNodeCount);
+        if (indentTokens.length) {
+          let indent = '';
+          indentTokens.forEach(t => { indent += t.text });
+          this._tokens[0].indent = indent;
+        }
+      }
+    }
   }
 
   // Helpers
@@ -369,10 +432,20 @@ export class Tokenizer {
   }
 
   _makeToken(token) {
+    if (this._extensions.length) {
+      try {
+        this._extensions.forEach(ext => {
+          token = ext.transformToken(token);
+        });
+      } catch (e) {
+        this._setError(e.message);
+        return;
+      }
+    }
     this._tokens.push(token);
   }
 
-  _makeError(message) {
+  _setError(message) {
     const error = new Error(message);
     error.index = this._index - 1;
     error.line = this._line;

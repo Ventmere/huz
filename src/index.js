@@ -7,6 +7,10 @@ import { register } from './extension';
 export { Tokenizer } from './tokenizer';
 export { Parser, Renderer, TokenType, NodeType };
 
+import { Inheritance } from './extensions/inheritance';
+
+register(Inheritance);
+
 export function parse(src, opts) {
   const parser = new Parser(opts);
   return parser.parse(src);

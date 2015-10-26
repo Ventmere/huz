@@ -1,5 +1,5 @@
-import * as tokenTypes from './token';
-import * as nodeTypes from './node';
+import * as TokenType from './token';
+import * as NodeType from './node';
 import { Tokenizer } from './tokenizer';
 import { visit } from './helpers';
 import { instantiateAll } from './extension';
@@ -51,7 +51,7 @@ export class Parser {
 
   parse(src) {
     const rootNode = { 
-      type: nodeTypes.ROOT, 
+      type: NodeType.ROOT, 
       children: []
     };
     this._src = src;
@@ -88,7 +88,10 @@ export class Parser {
   _parseNodes(src) {
     let initialStackSize = this._stack.length;
     let token;
-    const z = new Tokenizer(src, { delimiters: this._delimiters.slice(0) });
+    const z = new Tokenizer(src, { 
+      delimiters: this._delimiters.slice(0),
+      extensions: this._extensions
+    });
 
     do {
       token = z.getNextToken();
@@ -112,59 +115,59 @@ export class Parser {
 
       if (!handled) {
         switch (token.type) {
-          case tokenTypes.TEXT:
+          case TokenType.TEXT:
             this._appendNode({
-              type: nodeTypes.TEXT,
+              type: NodeType.TEXT,
               text: token.text,
               location: this._makeLocation(token.location)
             });
             break;
 
-          case tokenTypes.VARIABLE:
-          case tokenTypes.UNESCAPED_VARIABLE:
+          case TokenType.VARIABLE:
+          case TokenType.UNESCAPED_VARIABLE:
             this._appendNode({
-              type: nodeTypes.VARIABLE,
+              type: NodeType.VARIABLE,
               name: token.name,
-              unescaped: token.type === tokenTypes.UNESCAPED_VARIABLE,
+              unescaped: token.type === TokenType.UNESCAPED_VARIABLE,
               location: this._makeLocation(token.location)
             });
             break;
 
-          case tokenTypes.SECTION_OPEN:
+          case TokenType.SECTION_OPEN:
             this._handleSectionOpen(token);
             break;
 
-          case tokenTypes.INVERTED_SECTION_OPEN:
+          case TokenType.INVERTED_SECTION_OPEN:
             this._handleSectionOpen(token, true);
             break;
 
-          case tokenTypes.SECTION_CLOSE:
+          case TokenType.SECTION_CLOSE:
             this._handleSectionClose(token);
             break;
 
-          case tokenTypes.PARTIAL:
+          case TokenType.PARTIAL:
             this._appendNode({
-              type: nodeTypes.PARTIAL,
+              type: NodeType.PARTIAL,
               name: token.name,
               indent: token.indent,
               location: this._makeLocation(token.location)
             });
             break;
 
-          case tokenTypes.COMMENT:
+          case TokenType.COMMENT:
             this._handleComment(token);
             break;
 
-          case tokenTypes.DELIMITER_CHANGE:
+          case TokenType.DELIMITER_CHANGE:
             this._appendNode({
-              type: nodeTypes.DELIMITER_CHANGE,
+              type: NodeType.DELIMITER_CHANGE,
               delimiters: token.delimiters,
               location: this._makeLocation(token.location)
             });
             break;
         }
       }
-    } while (token.type !== tokenTypes.EOF);
+    } while (token.type !== TokenType.EOF);
 
     if (this._stack.length > initialStackSize) {
       this._throw('Unexpected EOF: sections not closed: ' + 
@@ -192,7 +195,7 @@ export class Parser {
   _handleSectionOpen(token, inverted = false) {
     const { name, location } = token;
     this._pushParent({
-      type: nodeTypes.SECTION,
+      type: NodeType.SECTION,
       name,
       inverted,
       location
@@ -202,7 +205,7 @@ export class Parser {
   _handleSectionClose(token) {
     const { name, location } = token;
     const section = this._popParent();
-    if (section.type !== nodeTypes.SECTION) {
+    if (section.type !== NodeType.SECTION) {
       this._throw(`Unexpected SECTION_CLOSE: '${name}'`);
     }
 
@@ -219,7 +222,7 @@ export class Parser {
   _handleComment(token) {
     const { content, location } = token;
     this._appendNode({
-      type: nodeTypes.COMMENT,
+      type: NodeType.COMMENT,
       content,
       location: this._makeLocation(location)
     });

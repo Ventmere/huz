@@ -13,24 +13,28 @@ class RenderContext {
     this._renderer = renderer;
   }
 
+  get top() {
+    return this._renderer._stack.length;
+  }
+
   evaluate(name) {
     return this._renderer._evaluate(name);
   }
 
-  pushNodes(nodes, reversed) {
-    this._renderer._pushNodes(nodes, reversed);
+  pushNodes(nodes) {
+    this._renderer._pushNodes(nodes);
   }
 
   pushContext(ctx) {
     this._pushContext(ctx);
   }
 
-  parsePartial(name) {
-    return this._renderer._parsePartial(name);
+  parse(src, opts) {
+    return this._renderer._parse(src, opts);
   }
 
-  expandPartial(node) {
-    return this._renderer._expandPartial(node);
+  getParsedPartial(name) {
+    return this._renderer._getParsedPartial(name);
   }
 
   throw(message) {
@@ -48,11 +52,11 @@ export class Renderer {
     }
 
     this._partialCached = {};
-    this._root = this._parse(src);
     this._stack = null;
     this._contextStack = null;
     this._partialStack = null;
     this._lambdaStack = null;
+    this._src = src;
   }
 
   render(context) {
@@ -64,7 +68,8 @@ export class Renderer {
     this._pushContext(context);
 
     //push root nodes
-    this._stack = this._root.children.slice(0).reverse();
+    const rootNode = this._parse(this._src);
+    this._stack = rootNode.children.slice(0).reverse();
 
     let out = '';
     let newline = true;
@@ -155,7 +160,7 @@ export class Renderer {
             } else {
               this._replaceTopContext(node.contexts[repeatIndex]);
             }
-            this._pushNodes(node.nodesReversed, true);
+            this._pushNodes(node.children);
             node.count ++;
           } else {
             this._popNode();
@@ -184,8 +189,10 @@ export class Renderer {
     return parser.parse(src);
   }
 
-  _pushNodes(list, reversed = false) {
-    this._stack = this._stack.concat(reversed ? list : list.slice(0).reverse());
+  _pushNodes(list) {
+    for (let i = list.length - 1; i >= 0; i --) {
+      this._stack.push(list[i]);
+    }
   }
 
   _popNode() {
@@ -197,7 +204,7 @@ export class Renderer {
       type: REPEATER_NODE_TYPE,
       count: 0,
       repeat,
-      nodesReversed: nodes.slice(0).reverse(),
+      children: nodes.slice(0),
       contexts
     });
   }
@@ -279,17 +286,25 @@ export class Renderer {
     return '';
   }
 
-  _parsePartial(name) {
-    if (!this._partials.hasOwnProperty(name)) {
-      return null;
+  _getParsedPartial(name) {
+    if (this._partialCached.hasOwnProperty(name)) {
+      return this._partialCached[name];
+    } else {
+      if (!this._partials.hasOwnProperty(name)) {
+        return null;
+      }
+      const ast = this._parse(this._partials[name], { name });
+      const nodes = this._partialCached[name] = ast.children;
+      return nodes;
     }
-
-    return this._parse(this._partials[name], { name })
   }
 
   _expandPartial(node) {
     const { name } = node;
-    if (!this._partials.hasOwnProperty(name)) {
+    const nodes = this._getParsedPartial(name);
+
+    if (nodes === null) {
+      //The empty string should be used when the named partial is not found.
       return;
     }
 
@@ -303,13 +318,7 @@ export class Renderer {
       );
     }
 
-    if (this._partialCached.hasOwnProperty(name)) {
-      this._pushNodes(this._partialCached[name], true);
-    } else {
-      const ast = this._parsePartial(name);
-      const nodesReversed = this._partialCached[name] = ast.children.slice(0).reverse();
-      this._pushNodes(nodesReversed, true);
-    }
+    this._pushNodes(nodes);
   }
 
   _expandLambda(node, lambda) {
