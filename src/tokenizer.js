@@ -1,5 +1,6 @@
 import * as TokenType from './token';
 import { instantiateAll } from './extension';
+import { trimStandaloneToken } from './helpers';
 
 const STATE_NONE        = 'STATE_NONE';
 const STATE_EOF         = 'STATE_EOF';
@@ -261,97 +262,7 @@ export class Tokenizer {
   }
 
   _handleStandaloneTag() {
-    const tokens = this._tokens;
-    const count = tokens.length;
-
-    if (count === 0) {
-      return;
-    }
-
-    let open = null;
-    let inline = 0;
-    let standalone = true;
-    let indentTokens = [];
-    for (let i = 0; standalone && i < count; i++) {
-      const token = tokens[i];
-      let idx;
-      switch (token.type) {
-        case TokenType.VARIABLE:
-        case TokenType.UNESCAPED_VARIABLE:
-          standalone = false;
-          break;
-        case TokenType.TEXT:
-          if (isStringWhitespace(token.text) && inline === 0) {
-            indentTokens.push(token);
-          } else {
-            standalone = false;
-          }
-          break;
-        case TokenType.DELIMITER_CHANGE:
-        case TokenType.COMMENT:
-          if (open !== null) {
-            open.push(token);
-          } else {
-            inline ++;
-          }
-          break;
-        case TokenType.SECTION_CLOSE:
-          if (open) {
-            if (open[0].name === token.name) {
-              open = null;
-            } else {
-              standalone = false;
-            }
-          } else {
-            inline ++;
-          }
-          break;
-        default: //section-like tags
-          if (open === null) {
-            open = [token];
-            inline ++;
-          } else {
-            standalone = false;
-          }
-          break;
-      }
-
-      if (inline > 1) {
-        standalone = false;
-      }
-    }
-
-    if (open && open.length > 1) {
-      standalone = false;
-    }
-    
-    if (standalone) {
-      console.log('T', tokens);
-      //all whitespace
-      if (indentTokens.length === count) {
-        return;
-      }
-
-      let tailWSNodeCount = 0;
-      for (let i = count - 1; i >= 0; i--) {
-        const token = tokens[i];
-        if (token.type == TokenType.TEXT && isStringWhitespace(token.text)) {
-          tailWSNodeCount ++;
-        } else {
-          break;
-        }
-      }
-
-      if (indentTokens.length > 0 || tailWSNodeCount > 0) {
-        //trim
-        this._tokens = tokens.slice(indentTokens.length, count - tailWSNodeCount);
-        if (indentTokens.length) {
-          let indent = '';
-          indentTokens.forEach(t => { indent += t.text });
-          this._tokens[0].indent = indent;
-        }
-      }
-    }
+    this._tokens = trimStandaloneToken(this._tokens);
   }
 
   // Helpers
@@ -452,10 +363,6 @@ export class Tokenizer {
     error.column = this._column;
     this._error = error;
   }
-}
-
-function isStringWhitespace(str) {
-  return /^\s*$/.test(str);
 }
 
 function extractNewDelimiters(tagContent) {

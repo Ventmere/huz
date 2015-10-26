@@ -9,7 +9,6 @@ export function defineTests(name, test, mapFunc) {
   describe(name, () => {
     test.tests.forEach(t => {
       it(t.name, () => {
-        //console.log(t.name);
         try {
           const result = render(t.template, t.data, {
             partials: t.partials
@@ -24,10 +23,11 @@ export function defineTests(name, test, mapFunc) {
   })
 }
 
+function getTest(name) {
+  return require(`./spec/specs/${name}.json`);
+}
+
 describe('Specification', () => {
-  function getTest(name) {
-    return require(`./spec/specs/${name}.json`);
-  }
 
   ['comments', 'delimiters', 'interpolation', 'inverted', 'partials', 'sections']
     .forEach(name => defineTests(name, getTest(name)));
@@ -44,9 +44,3 @@ describe('Specification', () => {
     return test;
   });
 });
-
-it.only('on', () => {
-  render(`
-      Begin.
-`);
-})

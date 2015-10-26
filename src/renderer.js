@@ -37,8 +37,8 @@ class RenderContext {
     return this._renderer._getParsedPartial(name);
   }
 
-  throw(message) {
-    return this._renderer._throw(message);
+  throw(message, location) {
+    return this._renderer._throw(message, location);
   }
 }
 

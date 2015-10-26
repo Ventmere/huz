@@ -6,6 +6,7 @@ export class Extension {
 
   //called by parser
   handleToken(token, parserContext) { }
+  visit(root) { return root; }
   
   //called by renderer
   handleNode(node, renderContext) { }

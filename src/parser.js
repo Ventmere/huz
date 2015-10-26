@@ -59,6 +59,12 @@ export class Parser {
     this._lastToken = null;
     this._parseNodes(src);
 
+    if (this._extensions.length > 0) {
+      for (let i = 0; i < this._extensions.length; i++) {
+        this._extensions[i].visit(rootNode);
+      }
+    }
+
     return rootNode;
   }
 

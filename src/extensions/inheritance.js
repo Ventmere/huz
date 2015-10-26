@@ -17,7 +17,7 @@ export class Inheritance extends Extension {
   constructor() {
     super();
 
-    this._scopes = [];
+    this._blocks = null;
   }
 
   transformToken(token) {
@@ -27,7 +27,7 @@ export class Inheritance extends Extension {
         if (name) {
           if (name[0] === '<') {
             if (name.length === 1) {
-              throw new Error('Expect a parent partial name.');
+              throw new Error('Parent partial name expected');
             }
             token = {
               type: PARENT,
@@ -36,7 +36,7 @@ export class Inheritance extends Extension {
             };
           } else if (name[0] === '$') {
             if (name.length === 1) {
-              throw new Error('Expect a block name.');
+              throw new Error('Block name expected');
             }
             const blockName = name.slice(1);
             token = {
@@ -76,7 +76,7 @@ export class Inheritance extends Extension {
         const tagNode = parserContext.tailNode;
         if (tagNode === null) {
           if (isInheritanceTagType(tagNode.type)) {
-            parserContext.throw('Unexpected tag close.');
+            parserContext.throw('Unexpected tag close');
           }
         } else {
           if (tagNode.name !== name) {
@@ -87,6 +87,21 @@ export class Inheritance extends Extension {
             tagNode.location.endIndex = location.endIndex;
             tagNode.location.endLine = location.endLine;
             parserContext.appendNode(tagNode);
+
+            //TODO move this to visit, handle whitespaces after Parent close tag.
+            const firstLine = tagNode.location.line;
+            const firstBlock = tagNode.children.find(c => c.type === BLOCK);
+            if (firstBlock && firstBlock.location.line === firstLine) {
+              for (let i = 0; i < firstBlock.children.length; i++) {
+                const blockNode = firstBlock.children[i];
+                if (blockNode.type === NodeType.TEXT && /^\s*$/.test(blockNode.text)) {
+                  blockNode.text = '';
+                } else {
+                  break;
+                }
+              }
+            }
+
             handled = true;
           }
         }
@@ -95,7 +110,7 @@ export class Inheritance extends Extension {
       case TokenType.EOF:
         if (this.top > 0) {
           parserContext.throw('Unexpected EOF: tags not closed: ' + 
-            this.stack.map(f => f.name)).join(', ');
+            this.stack.map(f => f.name).join(', '));
         }
         break;
     }
@@ -113,54 +128,46 @@ export class Inheritance extends Extension {
         break;
 
       case LEAVE_SCOPE:
-        //assert node.scope === this._scopes[-1]
-        this._scopes.pop();
+        this._blocks = null;
         break;
     }
   }
 
   _handleParent(node, rendererContext) {
     const { name } = node;
-    
-    const partialNodes = rendererContext.getParsedPartial(name);
-    if (partialNodes === null) {
-      return;
+
+    if (this._blocks === null) {
+      rendererContext.pushNodes([
+        {
+          type: LEAVE_SCOPE
+        }
+      ]);
+      this._blocks = {};
     }
 
     //find all blocks defined in parent
-    const blocks = {};
     node.children.forEach(child => {
       if (child.type === BLOCK) {
         const blockName = child.name;
-        if (blocks.hasOwnProperty(blockName)) {
-          const existingBlock = blocks[blockName];
-          rendererContext.throw(`Duplicated block '${blockName}, last seen: ${existingBlock.location.filename}:${existingBlock.location.line+1}'`);
+        if (!this._blocks.hasOwnProperty(blockName)) {
+          this._blocks[blockName] = child;
         }
-        blocks[blockName] = child;
       }
     });
 
-    //scope
-    const scope = {
-      blocks
-    };
-    this._scopes.push(scope);
-
     rendererContext.pushNodes([
-      //push a special node to pop current scope
       {
-        type: LEAVE_SCOPE,
-        scope
-      }, 
-      ...partialNodes
+        type: TokenType.PARTIAL,
+        name,
+        indent: node.indent
+      }
     ]);
   }
 
   _handleBlock(node, rendererContext) {
     const { name, children } = node;
-    const currentScope = this._scopes.length > 0 ? this._scopes[this._scopes.length - 1] : null;
-    if (currentScope && currentScope.blocks.hasOwnProperty(name)) {
-      rendererContext.pushNodes(currentScope.blocks[name].children);
+    if (this._blocks !== null && this._blocks.hasOwnProperty(name)) {
+      rendererContext.pushNodes(this._blocks[name].children);
     } else {
       rendererContext.pushNodes(node.children);
     }
