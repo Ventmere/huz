@@ -11,10 +11,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/fluxxu/huz.git"
+    "url": "git+https://github.com/Ventmere/huz.git"
   },
   "author": "fluxxu",
-  "homepage": "https://github.com/fluxxu/huz",
+  "homepage": "https://github.com/Ventmere/huz",
   "devDependencies": {
     "babel": "^5.8.23",
     "babel-core": "^5.8.25",
