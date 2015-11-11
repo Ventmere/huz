@@ -6,3 +6,4 @@
 	 * MIT Licensed
 	 */
 "use strict";function n(e){var t=""+e,n=i.exec(t);if(!n)return t;var r,a="",s=0,o=0;for(s=n.index;s<t.length;s++){switch(t.charCodeAt(s)){case 34:r="&quot;";break;case 38:r="&amp;";break;case 39:r="&#39;";break;case 60:r="&lt;";break;case 62:r="&gt;";break;default:continue}o!==s&&(a+=t.substring(o,s)),o=s+1,a+=r}return o!==s?a+t.substring(o,s):a}var i=/["'&<>]/;e.exports=n}])});
+//# sourceMappingURL=huz.js.map

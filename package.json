@@ -1,7 +1,7 @@
 {
   "name": "huz",
-  "version": "0.1.0",
-  "description": "an implementation of mustache template engine.",
+  "version": "0.1.2",
+  "description": "A specification-compliant, extensible mustache compiler.",
   "main": "build/huz.js",
   "scripts": {
     "test": "NODE_ENV=test ./node_modules/mocha/bin/mocha --compilers js:babel/register --require ./test/init.js --recursive",
