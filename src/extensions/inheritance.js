@@ -38,7 +38,6 @@ export class Inheritance extends Extension {
             if (name.length === 1) {
               throw new Error('Block name expected');
             }
-            const blockName = name.slice(1);
             token = {
               type: BLOCK,
               name: name.slice(1),
@@ -165,7 +164,7 @@ export class Inheritance extends Extension {
   }
 
   _handleBlock(node, rendererContext) {
-    const { name, children } = node;
+    const { name } = node;
     if (this._blocks !== null && this._blocks.hasOwnProperty(name)) {
       rendererContext.pushNodes(this._blocks[name].children);
     } else {

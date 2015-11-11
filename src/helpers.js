@@ -41,7 +41,6 @@ export function trimStandaloneToken(tokens) {
   let indentTokens = [];
   for (let i = 0; standalone && i < count; i++) {
     const token = tokens[i];
-    let idx;
     switch (token.type) {
       case TokenType.VARIABLE:
       case TokenType.UNESCAPED_VARIABLE:
