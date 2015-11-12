@@ -133,7 +133,7 @@ export class Inheritance extends Extension {
   }
 
   _handleParent(node, rendererContext) {
-    const { name } = node;
+    const { name, location } = node;
 
     if (this._blocks === null) {
       rendererContext.pushNodes([
@@ -157,8 +157,8 @@ export class Inheritance extends Extension {
     rendererContext.pushNodes([
       {
         type: TokenType.PARTIAL,
-        name,
-        indent: node.indent
+        name, location,
+        indent: node.indent,
       }
     ]);
   }

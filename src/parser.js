@@ -69,6 +69,7 @@ export class Parser {
   }
 
   _appendNode(node) {
+    node.location.filename = this._filename;
     this._stack[this._stack.length - 1].children.push(node);
     return node;
   }
@@ -83,7 +84,6 @@ export class Parser {
 
   _makeLocation(beginLocation, endLocation) {
     const location = this._clone(beginLocation);
-    location.filename = this._filename;
     if (endLocation) {
       location.endIndex = endLocation.endIndex;
       location.endLine = endLocation.endLine;

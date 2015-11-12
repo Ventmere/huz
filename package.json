@@ -1,6 +1,6 @@
 {
   "name": "huz",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "A specification-compliant, extensible mustache compiler.",
   "main": "build/huz.js",
   "scripts": {
