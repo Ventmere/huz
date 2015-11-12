@@ -1,13 +1,14 @@
 {
   "name": "huz",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A specification-compliant, extensible mustache compiler.",
   "main": "build/huz.js",
   "scripts": {
     "test": "NODE_ENV=test ./node_modules/mocha/bin/mocha --compilers js:babel/register --require ./test/init.js --recursive",
     "test:watch": "npm run test -- --watch",
     "clean": "rm -rf build && mkdir build",
-    "build": "npm run clean && webpack -p --config=webpack.config.js  src/index.js build/huz.js"
+    "build": "npm run clean && webpack -p --config=webpack.config.js  src/index.js build/huz.js",
+    "publish": "npm run build && npm publish"
   },
   "repository": {
     "type": "git",
