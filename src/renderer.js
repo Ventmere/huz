@@ -44,6 +44,9 @@ class RenderContext {
 
 export class Renderer {
   constructor(src, opts = {}) {
+    //if this is true, src and values in partials are parsed tree, not string
+    this._parsed = opts.parsed || false;
+    
     this._partials = opts.partials || {};
     this._delimiters = opts.delimiters ? opts.delimiters : ['{{', '}}'];
     this._extensions = opts.extensions || instantiateAll();
@@ -52,6 +55,12 @@ export class Renderer {
     }
 
     this._partialCached = {};
+    if (this._parsed) {
+      Object.keys(opts.partials).forEach(k => {
+        this._partialCached[k] = opts.partials[k].children;
+      });
+    }
+
     this._stack = null;
     this._contextStack = null;
     this._partialStack = null;
@@ -68,7 +77,7 @@ export class Renderer {
     this._pushContext(context);
 
     //push root nodes
-    const rootNode = this._parse(this._src);
+    const rootNode = this._parsed ? this._src : this._parse(this._src);
     this._stack = rootNode.children.slice(0).reverse();
 
     let out = '';
