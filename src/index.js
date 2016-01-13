@@ -2,6 +2,7 @@ import { Parser } from './parser';
 import { Renderer } from './renderer';
 import * as TokenType from './token';
 import * as NodeType from './node';
+import * as Helpers from './helpers';
 import { register } from './extension';
 
 export { Tokenizer } from './tokenizer';
@@ -25,4 +26,4 @@ export function render(src, context, opts) {
   return r.render(context);
 }
 
-export { register };
+export { register, Helpers };

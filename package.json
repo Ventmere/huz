@@ -1,6 +1,6 @@
 {
   "name": "huz",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "A specification-compliant, extensible mustache compiler.",
   "main": "build/huz.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "test:watch": "npm run test -- --watch",
     "clean": "rm -rf build && mkdir build",
     "build": "npm run clean && webpack -p --config=webpack.config.js  src/index.js build/huz.js",
-    "publish": "npm run build && npm publish"
+    "prepublish": "npm run build"
   },
   "repository": {
     "type": "git",
