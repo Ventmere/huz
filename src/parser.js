@@ -21,6 +21,10 @@ class ParserContext {
     return this._parser._popParent();
   }
 
+  get filename() {
+    return this._parser.filename;
+  }
+
   get top() {
     return this._parser._stack.length;
   }
