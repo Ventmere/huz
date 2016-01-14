@@ -25,6 +25,10 @@ class RenderContext {
     this._renderer._pushNodes(nodes);
   }
 
+  pushNode(node) {
+    this._renderer._pushNode(node);
+  }
+
   pushContext(ctx) {
     this._pushContext(ctx);
   }
@@ -49,7 +53,7 @@ export class Renderer {
     
     this._partials = opts.partials || {};
     this._delimiters = opts.delimiters ? opts.delimiters : ['{{', '}}'];
-    this._extensions = opts.extensions || instantiateAll();
+    this._extensions = opts.extensions || instantiateAll(opts);
     if (this._extensions.length > 0) {
       this._renderContext = new RenderContext(this);
     }
@@ -83,109 +87,118 @@ export class Renderer {
     let out = '';
     let newline = true;
     while (this._stack.length > 0) {
-      const node = this._stack[this._stack.length - 1];
-      const partial = this._partialStack.length ? this._partialStack[this._partialStack.length - 1] : null;
+      const top = this._stack.length - 1;
+      const node = this._stack[top];
 
-      //insert indent
-      if (node.type in nodeTypes) {
-        if (newline && partial !== null && partial.indent.length > 0) {
-          out += partial.indent;
-        }
+      let handled = false;
+      if (this._extensions) {
+        this._extensions.forEach(ext => {
+          if (ext.handleNode(node, this._renderContext)) {
+            handled = true;
+          }
+        });
       }
 
-      let value;
-      switch (node.type) {
-        case nodeTypes.VARIABLE:
-          value = this._evaluate(node.name);
-          if (isFunction(value)) {
-            this._popNode();
-            this._expandLambda(node, value);
-          } else {
-            if (!!value) {
-              out += node.unescaped ? value : escapeHTML(value);
-            }
-            this._popNode();
+      if (handled) {
+        this._stack.splice(top, 1);
+      } else {
+        const partial = this._partialStack.length ? this._partialStack[this._partialStack.length - 1] : null;
+
+        //insert indent
+        if (node.type in nodeTypes) {
+          if (newline && partial !== null && partial.indent.length > 0) {
+            out += partial.indent;
           }
-          break;
+        }
 
-        case nodeTypes.SECTION:
-          value = this._evaluate(node.name);
-          if (isFunction(value)) {
-            this._popNode();
-            this._expandLambda(node, value);
-          } else {
-            let isList = Array.isArray(value);
-
-            if (isList && value.length === 0) {
-              //Empty lists should behave like falsey values.
-              value = false;
-              isList = false;
-            }
-
-            let testResult = !!value;
-            if (node.inverted) {
-              testResult = !testResult;
-            }
-
-            if (testResult) {
-              if (isList) {
-                this._popNode();
-                this._pushRepeaterNode(value.length, node.children, value);
-              } else {
-                this._popNode()
-                this._pushContext(value);
-                this._pushNodes(node.children);
+        let value;
+        switch (node.type) {
+          case nodeTypes.VARIABLE:
+            value = this._evaluate(node.name);
+            if (isFunction(value)) {
+              this._popNode();
+              this._expandLambda(node, value);
+            } else {
+              if (!!value) {
+                out += node.unescaped ? value : escapeHTML(value);
               }
+              this._popNode();
+            }
+            break;
+
+          case nodeTypes.SECTION:
+            value = this._evaluate(node.name);
+            if (isFunction(value)) {
+              this._popNode();
+              this._expandLambda(node, value);
+            } else {
+              let isList = Array.isArray(value);
+
+              if (isList && value.length === 0) {
+                //Empty lists should behave like falsey values.
+                value = false;
+                isList = false;
+              }
+
+              let testResult = !!value;
+              if (node.inverted) {
+                testResult = !testResult;
+              }
+
+              if (testResult) {
+                if (isList) {
+                  this._popNode();
+                  this._pushRepeaterNode(value.length, node.children, value);
+                } else {
+                  this._popNode()
+                  this._pushContext(value);
+                  this._pushNodes(node.children);
+                }
+              } else {
+                this._popNode();
+              }
+            }
+            break;
+
+          case nodeTypes.TEXT:
+            out += node.text;
+            this._popNode()
+            break;
+
+          case nodeTypes.COMMENT:
+            this._popNode();
+            break;
+
+          case nodeTypes.PARTIAL:
+            this._popNode();
+            this._expandPartial(node);
+            break;
+
+          case nodeTypes.DELIMITER_CHANGE:
+            this._popNode();
+            this._delimiters = node.delimiters.slice(0);
+            break;
+
+          case REPEATER_NODE_TYPE:
+            if (node.count < node.repeat) {
+              const repeatIndex = node.count;
+              if (repeatIndex === 0) {
+                this._pushContext(node.contexts[0]);
+              } else {
+                this._replaceTopContext(node.contexts[repeatIndex]);
+              }
+              this._pushNodes(node.children);
+              node.count ++;
             } else {
               this._popNode();
             }
-          }
-          break;
+            break;
 
-        case nodeTypes.TEXT:
-          out += node.text;
-          this._popNode()
-          break;
-
-        case nodeTypes.COMMENT:
-          this._popNode();
-          break;
-
-        case nodeTypes.PARTIAL:
-          this._popNode();
-          this._expandPartial(node);
-          break;
-
-        case nodeTypes.DELIMITER_CHANGE:
-          this._popNode();
-          this._delimiters = node.delimiters.slice(0);
-          break;
-
-        case REPEATER_NODE_TYPE:
-          if (node.count < node.repeat) {
-            const repeatIndex = node.count;
-            if (repeatIndex === 0) {
-              this._pushContext(node.contexts[0]);
-            } else {
-              this._replaceTopContext(node.contexts[repeatIndex]);
-            }
-            this._pushNodes(node.children);
-            node.count ++;
-          } else {
+          default:
             this._popNode();
-          }
-          break;
-
-        default:
-          this._popNode();
-          if (this._extensions) {
-            this._extensions.forEach(ext => {
-              ext.handleNode(node, this._renderContext);
-            });
-          }
-          break;
+            break;
+        }
       }
-
       this._checkStacks();
       newline = out.length === 0 || (out[out.length -1 ] === '\n');
     }
@@ -202,6 +215,10 @@ export class Renderer {
     for (let i = list.length - 1; i >= 0; i --) {
       this._stack.push(list[i]);
     }
+  }
+
+  _pushNode(node) {
+    this._stack.push(node);
   }
 
   _popNode() {
@@ -302,7 +319,7 @@ export class Renderer {
       if (!this._partials.hasOwnProperty(name)) {
         return null;
       }
-      const ast = this._parse(this._partials[name], { name });
+      const ast = this._parse(this._partials[name], { filename: name });
       const nodes = this._partialCached[name] = ast.children;
       return nodes;
     }
@@ -349,7 +366,7 @@ export class Renderer {
       const code = lambda();
       if (code) {
         //A lambda's return value should parse with the default delimiters.
-        ast = this._parse('' + code, { name: '[lambda]' });
+        ast = this._parse('' + code, { filename: '[lambda]' });
         if (!node.unescaped) {
           //Lambda results should be appropriately escaped.
           walk(ast, node => {
@@ -367,7 +384,7 @@ export class Renderer {
         //Lambdas used for inverted sections should be considered truthy.
         //Lambdas used for sections should parse with the current delimiters.
         ast = this._parse('' + code, {
-          name: '[#lambda]',
+          filename: '[#lambda]',
           delimiters: this._delimiters.slice(0)
         });
       } else {

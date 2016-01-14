@@ -22,7 +22,7 @@ class ParserContext {
   }
 
   get filename() {
-    return this._parser.filename;
+    return this._parser._filename;
   }
 
   get top() {
@@ -41,7 +41,7 @@ class ParserContext {
 export class Parser {
   constructor(opts = {}) {
     this._delimiters = opts.delimiters ? opts.delimiters : ["{{", "}}"];
-    this._extensions = opts.extensions || instantiateAll();
+    this._extensions = opts.extensions || instantiateAll(opts);
     this._filename = opts.filename || '';
 
     if (this._extensions.length > 0) {

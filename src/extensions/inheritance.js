@@ -120,15 +120,15 @@ export class Inheritance extends Extension {
     switch (node.type) {
       case PARENT:
         this._handleParent(node, rendererContext);
-        break;
+        return true;
 
       case BLOCK:
         this._handleBlock(node, rendererContext);
-        break;
+        return true;
 
       case LEAVE_SCOPE:
         this._blocks = null;
-        break;
+        return true;
     }
   }
 
@@ -154,13 +154,11 @@ export class Inheritance extends Extension {
       }
     });
 
-    rendererContext.pushNodes([
-      {
-        type: TokenType.PARTIAL,
-        name, location,
-        indent: node.indent,
-      }
-    ]);
+    rendererContext.pushNode({
+      type: TokenType.PARTIAL,
+      name, location,
+      indent: node.indent,
+    });
   }
 
   _handleBlock(node, rendererContext) {

@@ -12,9 +12,9 @@ export class Extension {
   handleNode(node, renderContext) { }
 }
 
-export function instantiateAll() {
+export function instantiateAll(opts) {
   return registry.map(ctor => {
-    return new ctor();
+    return new ctor(opts);
   });
 }
 
