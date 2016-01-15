@@ -264,14 +264,10 @@ export class Renderer {
   }
 
   _checkStacks() {
-    //console.log('STACK', this._stack);
-
-    //console.log('CONTEXT STACK:', this._contextStack);
-    if (this._stack.length === this._contextStack[this._contextStack.length - 1].sp) {
-      this._contextStack.pop();
+    if (this._stack.length < this._contextStack[this._contextStack.length - 1].sp) {
+      const poped = this._contextStack.pop();
     }
 
-    //console.log('PARTIAL STACK:', this._partialStack);
     if (this._partialStack.length > 0 && this._stack.length === this._partialStack[this._partialStack.length - 1].sp) {
       this._partialStack.pop();
     }
