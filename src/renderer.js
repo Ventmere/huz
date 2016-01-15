@@ -265,7 +265,7 @@ export class Renderer {
 
   _checkStacks() {
     if (this._stack.length < this._contextStack[this._contextStack.length - 1].sp) {
-      const poped = this._contextStack.pop();
+      this._contextStack.pop();
     }
 
     if (this._partialStack.length > 0 && this._stack.length === this._partialStack[this._partialStack.length - 1].sp) {
