@@ -293,7 +293,7 @@ export class Renderer {
       let resolved = true;
       for (let pi = 0; pi < path.length; pi++) {
         const key = path[pi];
-        if (current.hasOwnProperty(key)) {
+        if (typeof current === 'object' && current !== null && current.hasOwnProperty(key)) {
           current = current[key];
         } else {
           resolved = false;
