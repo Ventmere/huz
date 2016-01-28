@@ -30,7 +30,7 @@ class RenderContext {
   }
 
   pushContext(ctx) {
-    this._pushContext(ctx);
+    this._renderer._pushContext(ctx);
   }
 
   parse(src, opts) {
