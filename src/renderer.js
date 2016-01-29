@@ -60,8 +60,8 @@ export class Renderer {
 
     this._partialCached = {};
     if (this._parsed) {
-      Object.keys(opts.partials).forEach(k => {
-        this._partialCached[k] = opts.partials[k].children;
+      Object.keys(this._partials).forEach(k => {
+        this._partialCached[k] = this._partials[k].children;
       });
     }
 
@@ -183,9 +183,9 @@ export class Renderer {
             if (node.count < node.repeat) {
               const repeatIndex = node.count;
               if (repeatIndex === 0) {
-                this._pushContext(node.contexts[0]);
+                node.contextIndex = this._pushContext(node.contexts[0]);
               } else {
-                this._replaceTopContext(node.contexts[repeatIndex]);
+                this._replaceContextAt(node.contextIndex, node.contexts[repeatIndex]);
               }
               this._pushNodes(node.children);
               node.count ++;
@@ -236,10 +236,17 @@ export class Renderer {
   }
 
   _pushContext(context) {
-    this._contextStack.push({
+    return this._contextStack.push({
       context,
       sp: this._stack.length
-    });
+    }) - 1;
+  }
+
+  _replaceContextAt(index, context) {
+    if (index < 0 || index > this._contextStack.length - 1) {
+      throw new RangeError('Huz context index out of range.');
+    }
+    this._contextStack[index].context = context;
   }
 
   _pushPartial({ name, indent, location }) {
@@ -257,10 +264,6 @@ export class Renderer {
       location,
       sp: this._stack.length
     });
-  }
-
-  _replaceTopContext(context) {
-    this._contextStack[this._contextStack.length - 1].context = context;
   }
 
   _checkStacks() {

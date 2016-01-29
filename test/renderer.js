@@ -19,4 +19,35 @@ describe('Renderer', () => {
     })
     expect(r).equals(rp);
   });
+
+  it('context stack', () => {
+    const context = {
+      "list": [
+        {
+          "handle": "1",
+          "sublist": ['1.1'],
+          "active": true
+        },
+        {
+          "handle": "2",
+          "sublist": ['2.1'],
+        },
+        {
+          "handle": "3",
+          "sublist": []
+        }
+      ]
+    };
+
+    const template = `
+    {{#list}}
+      {{#sublist.length}}
+      [{{#active}}active{{/active}}]
+      {{/sublist.length}}
+    {{/list}}
+    `;
+
+    const r = render(template, context).replace(/\s/g, '');
+    expect(r).equals('[active][]');
+  });
 });
