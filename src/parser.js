@@ -73,6 +73,7 @@ export class Parser {
   }
 
   _appendNode(node) {
+    node.token = this._lastToken;
     node.location.filename = this._filename;
     this._stack[this._stack.length - 1].children.push(node);
     return node;
@@ -194,6 +195,7 @@ export class Parser {
   }
 
   _pushParent(node) {
+    node.token = this._lastToken;
     node.children = [];
     this._stack.push(node);
   }
