@@ -18,6 +18,7 @@ export class Inheritance extends Extension {
     super();
 
     this._blocks = null;
+    this._parentStack = [];
   }
 
   transformToken(token) {
@@ -117,6 +118,9 @@ export class Inheritance extends Extension {
   }
 
   handleNode(node, rendererContext) {
+    const top = rendererContext.top;
+    this._checkTop(top);
+
     switch (node.type) {
       case PARENT:
         this._handleParent(node, rendererContext);
@@ -134,6 +138,9 @@ export class Inheritance extends Extension {
 
   _handleParent(node, rendererContext) {
     const { name, location } = node;
+    const top = rendererContext.top;
+
+    this._pushParent(name, top);
 
     if (this._blocks === null) {
       rendererContext.pushNodes([
@@ -145,14 +152,16 @@ export class Inheritance extends Extension {
     }
 
     //find all blocks defined in parent
+    const blocks = {};
     node.children.forEach(child => {
       if (child.type === BLOCK) {
         const blockName = child.name;
-        if (!this._blocks.hasOwnProperty(blockName)) {
-          this._blocks[blockName] = child;
-        }
+        blocks[blockName] = child;
       }
     });
+    if (Object.keys(blocks).length) {
+      this._setDefaultBlocks(blocks);
+    }
 
     rendererContext.pushNode({
       type: TokenType.PARTIAL,
@@ -163,10 +172,53 @@ export class Inheritance extends Extension {
 
   _handleBlock(node, rendererContext) {
     const { name } = node;
-    if (this._blocks !== null && this._blocks.hasOwnProperty(name)) {
-      rendererContext.pushNodes(this._blocks[name].children);
+    const defaultBlock = this._getDefaultBlock(name);
+    if (defaultBlock) {
+      rendererContext.pushNodes(defaultBlock.children);
     } else {
       rendererContext.pushNodes(node.children);
     }
+  }
+
+  _pushParent(name, top) {
+    return this._parentStack.push({
+      name,
+      blocks: {},
+      top
+    });
+  }
+
+  _checkTop(top) {
+    let pop = 0;
+    for (let i = this._parentStack.length - 1; i >= 0; i--) {
+      const frame = this._parentStack[i];
+      if (frame.top > top) {
+        pop ++;
+      } else {
+        break;
+      }
+    }
+    if (pop > 0) {
+      this._parentStack = this._parentStack.slice(0, this._parentStack.length - pop);
+    }
+  }
+
+  _popParent() {
+    return this._parentStack.pop();
+  }
+
+  _getDefaultBlock(name) {
+    for (let i = 0; i < this._parentStack.length; i++) {
+      const frame = this._parentStack[i];
+      if (name in frame.blocks) {
+        return frame.blocks[name];
+      } 
+    }
+    return null;
+  }
+
+  _setDefaultBlocks(blocks) {
+    const topFrame = this._parentStack[this._parentStack.length - 1];
+    topFrame.blocks = Object.assign(topFrame.blocks, blocks);
   }
 }
