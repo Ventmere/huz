@@ -76,7 +76,7 @@ export class Tokenizer {
           break;
       }
 
-      if (matched) {
+      if (matched && !this._error) {
         this._markTokenEndLocation();
         matched = false;
       }
@@ -365,8 +365,9 @@ export class Tokenizer {
   }
 }
 
+const R_DELIMITER_CHANGE = /=[\s\n]*([^\s\n]*?)[\s\n]+([^\s\n]*?)[\s\n]*=[\s\n]*$/;
 function extractNewDelimiters(tagContent) {
-  const matches = tagContent.match(/=[\s\n]*([^\s\n]*?)[\s\n]+([^\s\n]*?)[\s\n]*=[\s\n]*$/);
+  const matches = tagContent.match(R_DELIMITER_CHANGE);
   if (matches) {
     return matches.slice(1);
   } else {
