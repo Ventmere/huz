@@ -72,8 +72,17 @@ export class Parser {
     return rootNode;
   }
 
+  _addNodeToken(node) {
+    const token = this._lastToken;
+    if (node.tokens) {
+      node.tokens.push(token);
+    } else {
+      node.tokens = [token];
+    }
+  }
+
   _appendNode(node) {
-    node.token = this._lastToken;
+    this._addNodeToken(node);
     node.location.filename = this._filename;
     this._stack[this._stack.length - 1].children.push(node);
     return node;
@@ -195,7 +204,7 @@ export class Parser {
   }
 
   _pushParent(node) {
-    node.token = this._lastToken;
+    this._addNodeToken(node);
     node.children = [];
     this._stack.push(node);
   }
