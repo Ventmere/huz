@@ -10,6 +10,8 @@ export class Extension {
   
   //called by renderer
   handleNode(node, renderContext) { }
+  transformNodeResult(node, result, nodeResult) { return nodeResult; }
+  transformResult(result) { return result; }
 }
 
 export function instantiateAll(opts) {

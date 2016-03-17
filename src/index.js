@@ -8,6 +8,7 @@ import { register } from './extension';
 export { Tokenizer } from './tokenizer';
 export { Parser, Renderer, TokenType, NodeType };
 
+export { Extension } from './extension';
 import { Inheritance } from './extensions/inheritance';
 
 register(Inheritance);

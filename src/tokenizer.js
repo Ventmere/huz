@@ -22,6 +22,7 @@ export class Tokenizer {
     this._column = 0;
     this._state = STATE_NONE;
     this._error = null;
+    this._filename = opts.filename;
     this._location = {
       index: 0,
       line: 0,
@@ -323,13 +324,9 @@ export class Tokenizer {
 
   _markTokenEndLocation() {
     const token = this._tokens[this._tokens.length - 1];
-    const { index, line, column } = this._location;
-    token.location = {
-      index, line, column,
-      endIndex: this._index - 1,
-      endLine: this._line,
-      endColumn: this._column
-    };
+    token.location.endIndex = this._index - 1;
+    token.location.endLine = this._line;
+    token.location.endColumn = this._column;
   }
 
   _isWhitespace() {
@@ -343,6 +340,11 @@ export class Tokenizer {
   }
 
   _makeToken(token) {
+    token.filename = this._filename;
+    const { index, line, column } = this._location;
+    token.location = {
+      index, line, column
+    };
     if (this._extensions.length) {
       try {
         this._extensions.forEach(ext => {
@@ -358,6 +360,7 @@ export class Tokenizer {
 
   _setError(message) {
     const error = new Error(message);
+    error.filename = this._filename;
     error.index = this._index - 1;
     error.line = this._line;
     error.column = this._column;

@@ -10,7 +10,8 @@ describe('Extension: Inheritance', () => {
     const html = render('{{<t}}{{$b}}1{{/b}}{{/t}}{{<t}}{{$b}}2{{/b}}{{/t}}', {}, {
       partials: {
         't': `{{$b}}default{{/b}}`
-      }
+      },
+      filename: '123'
     });
     expect(html).to.equal('12');
   });

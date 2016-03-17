@@ -17,6 +17,10 @@ class RenderContext {
     return this._renderer._stack.length;
   }
 
+  get result() {
+    return this._renderer._out;
+  }
+
   evaluate(name) {
     return this._renderer._evaluate(name);
   }
@@ -31,6 +35,10 @@ class RenderContext {
 
   pushContext(ctx) {
     this._renderer._pushContext(ctx);
+  }
+
+  appendText(text) {
+    this._renderer._out += text;
   }
 
   parse(src, opts) {
@@ -70,9 +78,13 @@ export class Renderer {
     this._partialStack = null;
     this._lambdaStack = null;
     this._src = src;
+    this._out = '';
+    this._transformNodeResult = (node, result, nodeResult) =>
+      this._extensions.reduce((r, e) => e.transformNodeResult(node, result, r), nodeResult);
   }
 
   render(context) {
+    this._out = '';
     this._stack = [];
     this._contextStack = [];
     this._partialStack = [];
@@ -84,7 +96,6 @@ export class Renderer {
     const rootNode = this._parsed ? this._src : this._parse(this._src);
     this._stack = rootNode.children.slice(0).reverse();
 
-    let out = '';
     let newline = true;
     while (this._stack.length > 0) {
       const top = this._stack.length - 1;
@@ -107,7 +118,7 @@ export class Renderer {
         //insert indent
         if (node.type in nodeTypes) {
           if (newline && partial !== null && partial.indent.length > 0) {
-            out += partial.indent;
+            this._out += partial.indent;
           }
         }
 
@@ -120,7 +131,8 @@ export class Renderer {
               this._expandLambda(node, value);
             } else {
               if (!!value) {
-                out += node.unescaped ? value : escapeHTML(value);
+                const result = node.unescaped ? value : escapeHTML(value);
+                this._out += this._transformNodeResult(node, this._out, result);
               }
               this._popNode();
             }
@@ -161,7 +173,7 @@ export class Renderer {
             break;
 
           case nodeTypes.TEXT:
-            out += node.text;
+            this._out += this._transformNodeResult(node, this._out, node.text);
             this._popNode()
             break;
 
@@ -200,9 +212,10 @@ export class Renderer {
         }
       }
       this._checkStacks();
-      newline = out.length === 0 || (out[out.length -1 ] === '\n');
+      newline = this._out.length === 0 || (this._out[this._out.length -1 ] === '\n');
     }
-    return out;
+
+    return this._extensions.reduce((result, ext) => ext.transformResult(result), this._out);
   }
 
   _parse(src, opts = {}) {

@@ -110,7 +110,8 @@ export class Parser {
     let token;
     const z = new Tokenizer(src, { 
       delimiters: this._delimiters.slice(0),
-      extensions: this._extensions
+      extensions: this._extensions,
+      filename: this._filename
     });
 
     do {
@@ -199,6 +200,7 @@ export class Parser {
 
   _throw(message) {
     const e = new Error(message);
+    e.filename = this._lastToken.filename;
     e.location = this._lastToken.location;
     throw e;
   }
