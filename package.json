@@ -1,6 +1,6 @@
 {
   "name": "huz",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A specification-compliant, extensible mustache compiler.",
   "main": "build/huz.js",
   "scripts": {
@@ -23,6 +23,7 @@
     "babel-loader": "^5.3.2",
     "chai": "^3.3.0",
     "mocha": "^2.3.3",
-    "escape-html": "^1.0.3"
+    "escape-html": "^1.0.3",
+    "webpack": "^2.0"
   }
 }

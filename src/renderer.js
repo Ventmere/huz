@@ -1,12 +1,13 @@
-import * as nodeTypes from './node';
-import escapeHTML from 'escape-html';
-import { Parser } from './parser';
-import { walk, visit } from './helpers';
-import { instantiateAll } from './extension';
+import * as nodeTypes from "./node";
+import escapeHTML from "escape-html";
+import { Parser } from "./parser";
+import { walk, visit } from "./helpers";
+import { instantiateAll } from "./extension";
 
-const REPEATER_NODE_TYPE  = '_REPEATER';
+const REPEATER_NODE_TYPE = "_REPEATER";
 const MAX_PARTIAL_STACK = 10;
 const MAX_LAMBDA_STACK = 255;
+const MAX_NODE_COUNT = 3000;
 
 class RenderContext {
   constructor(renderer) {
@@ -58,9 +59,9 @@ export class Renderer {
   constructor(src, opts = {}) {
     //if this is true, src and values in partials are parsed tree, not string
     this._parsed = opts.parsed || false;
-    
+
     this._partials = opts.partials || {};
-    this._delimiters = opts.delimiters ? opts.delimiters : ['{{', '}}'];
+    this._delimiters = opts.delimiters ? opts.delimiters : ["{{", "}}"];
     this._extensions = opts.extensions || instantiateAll(opts);
     if (this._extensions.length > 0) {
       this._renderContext = new RenderContext(this);
@@ -78,13 +79,16 @@ export class Renderer {
     this._partialStack = null;
     this._lambdaStack = null;
     this._src = src;
-    this._out = '';
+    this._out = "";
     this._transformNodeResult = (node, result, nodeResult) =>
-      this._extensions.reduce((r, e) => e.transformNodeResult(node, result, r), nodeResult);
+      this._extensions.reduce(
+        (r, e) => e.transformNodeResult(node, result, r),
+        nodeResult
+      );
   }
 
   render(context) {
-    this._out = '';
+    this._out = "";
     this._stack = [];
     this._contextStack = [];
     this._partialStack = [];
@@ -96,10 +100,22 @@ export class Renderer {
     const rootNode = this._parsed ? this._src : this._parse(this._src);
     this._stack = rootNode.children.slice(0).reverse();
 
+    let node_count = 0;
+
     let newline = true;
     while (this._stack.length > 0) {
       const top = this._stack.length - 1;
       const node = this._stack[top];
+
+      if (node.type !== nodeTypes.TEXT) {
+        node_count++;
+        if (node_count > MAX_NODE_COUNT) {
+          this._throw(
+            `Possible infinity loop detected: last node type is '${node.type}'`,
+            node.location
+          );
+        }
+      }
 
       let handled = false;
       if (this._extensions) {
@@ -113,7 +129,9 @@ export class Renderer {
       if (handled) {
         this._stack.splice(top, 1);
       } else {
-        const partial = this._partialStack.length ? this._partialStack[this._partialStack.length - 1] : null;
+        const partial = this._partialStack.length
+          ? this._partialStack[this._partialStack.length - 1]
+          : null;
 
         //insert indent
         if (node.type in nodeTypes) {
@@ -162,7 +180,7 @@ export class Renderer {
                   this._popNode();
                   this._pushRepeaterNode(value.length, node.children, value);
                 } else {
-                  this._popNode()
+                  this._popNode();
                   this._pushContext(value);
                   this._pushNodes(node.children);
                 }
@@ -174,7 +192,7 @@ export class Renderer {
 
           case nodeTypes.TEXT:
             this._out += this._transformNodeResult(node, this._out, node.text);
-            this._popNode()
+            this._popNode();
             break;
 
           case nodeTypes.COMMENT:
@@ -197,10 +215,13 @@ export class Renderer {
               if (repeatIndex === 0) {
                 node.contextIndex = this._pushContext(node.contexts[0]);
               } else {
-                this._replaceContextAt(node.contextIndex, node.contexts[repeatIndex]);
+                this._replaceContextAt(
+                  node.contextIndex,
+                  node.contexts[repeatIndex]
+                );
               }
               this._pushNodes(node.children);
-              node.count ++;
+              node.count++;
             } else {
               this._popNode();
             }
@@ -212,10 +233,14 @@ export class Renderer {
         }
       }
       this._checkStacks();
-      newline = this._out.length === 0 || (this._out[this._out.length -1 ] === '\n');
+      newline =
+        this._out.length === 0 || this._out[this._out.length - 1] === "\n";
     }
 
-    return this._extensions.reduce((result, ext) => ext.transformResult(result), this._out);
+    return this._extensions.reduce(
+      (result, ext) => ext.transformResult(result),
+      this._out
+    );
   }
 
   _parse(src, opts = {}) {
@@ -225,7 +250,7 @@ export class Renderer {
   }
 
   _pushNodes(list) {
-    for (let i = list.length - 1; i >= 0; i --) {
+    for (let i = list.length - 1; i >= 0; i--) {
       this._stack.push(list[i]);
     }
   }
@@ -249,15 +274,17 @@ export class Renderer {
   }
 
   _pushContext(context) {
-    return this._contextStack.push({
-      context,
-      sp: this._stack.length
-    }) - 1;
+    return (
+      this._contextStack.push({
+        context,
+        sp: this._stack.length
+      }) - 1
+    );
   }
 
   _replaceContextAt(index, context) {
     if (index < 0 || index > this._contextStack.length - 1) {
-      throw new RangeError('Huz context index out of range.');
+      throw new RangeError("Huz context index out of range.");
     }
     this._contextStack[index].context = context;
   }
@@ -265,7 +292,7 @@ export class Renderer {
   _pushPartial({ name, indent, location }) {
     this._partialStack.push({
       name,
-      indent: indent || '',
+      indent: indent || "",
       location,
       sp: this._stack.length
     });
@@ -280,28 +307,37 @@ export class Renderer {
   }
 
   _checkStacks() {
-    if (this._stack.length < this._contextStack[this._contextStack.length - 1].sp) {
+    if (
+      this._stack.length < this._contextStack[this._contextStack.length - 1].sp
+    ) {
       this._contextStack.pop();
     }
 
-    if (this._partialStack.length > 0 && this._stack.length === this._partialStack[this._partialStack.length - 1].sp) {
+    if (
+      this._partialStack.length > 0 &&
+      this._stack.length ===
+        this._partialStack[this._partialStack.length - 1].sp
+    ) {
       this._partialStack.pop();
     }
 
-    if (this._lambdaStack.length > 0 && this._stack.length === this._lambdaStack[this._lambdaStack.length - 1].sp) {
+    if (
+      this._lambdaStack.length > 0 &&
+      this._stack.length === this._lambdaStack[this._lambdaStack.length - 1].sp
+    ) {
       this._lambdaStack.pop();
     }
   }
 
   _evaluate(name) {
-    if (name === '.') {
+    if (name === ".") {
       return this._contextStack[this._contextStack.length - 1].context;
     }
 
-    const path = name.split('.');
+    const path = name.split(".");
     for (let i = this._contextStack.length - 1; i >= 0; i--) {
       const context = this._contextStack[i].context;
-      if (context === null || typeof context !== 'object') {
+      if (context === null || typeof context !== "object") {
         continue;
       }
 
@@ -309,7 +345,11 @@ export class Renderer {
       let resolved = true;
       for (let pi = 0; pi < path.length; pi++) {
         const key = path[pi];
-        if (typeof current === 'object' && current !== null && current.hasOwnProperty(key)) {
+        if (
+          typeof current === "object" &&
+          current !== null &&
+          current.hasOwnProperty(key)
+        ) {
           current = current[key];
         } else {
           resolved = false;
@@ -321,7 +361,7 @@ export class Renderer {
         return current;
       }
     }
-    return '';
+    return "";
   }
 
   _getParsedPartial(name) {
@@ -332,7 +372,7 @@ export class Renderer {
         return null;
       }
       const ast = this._parse(this._partials[name], { filename: name });
-      const nodes = this._partialCached[name] = ast.children;
+      const nodes = (this._partialCached[name] = ast.children);
       return nodes;
     }
   }
@@ -350,8 +390,11 @@ export class Renderer {
 
     if (this._partialStack.length > MAX_PARTIAL_STACK) {
       this._throw(
-        'Possible partial short circuit: ' +
-          this._partialStack.map(f => `${f.name}@${f.location.filename}:${f.location.line+1}`).concat([name]).join(' -> '),
+        "Possible partial short circuit: " +
+          this._partialStack
+            .map(f => `${f.name}@${f.location.filename}:${f.location.line + 1}`)
+            .concat([name])
+            .join(" -> "),
         node.location
       );
     }
@@ -366,8 +409,11 @@ export class Renderer {
 
     if (this._lambdaStack.length > MAX_LAMBDA_STACK) {
       this._throw(
-        'Possible lambda short circuit: ' +
-          this._lambdaStack.map(f => `${f.name}@${f.location.filename}:${f.location.line+1}`).concat([name]).join(' -> '),
+        "Possible lambda short circuit: " +
+          this._lambdaStack
+            .map(f => `${f.name}@${f.location.filename}:${f.location.line + 1}`)
+            .concat([name])
+            .join(" -> "),
         node.location
       );
     }
@@ -378,7 +424,7 @@ export class Renderer {
       const code = lambda();
       if (code) {
         //A lambda's return value should parse with the default delimiters.
-        ast = this._parse('' + code, { filename: '[lambda]' });
+        ast = this._parse("" + code, { filename: "[lambda]" });
         if (!node.unescaped) {
           //Lambda results should be appropriately escaped.
           walk(ast, node => {
@@ -395,8 +441,8 @@ export class Renderer {
       if (code) {
         //Lambdas used for inverted sections should be considered truthy.
         //Lambdas used for sections should parse with the current delimiters.
-        ast = this._parse('' + code, {
-          filename: '[#lambda]',
+        ast = this._parse("" + code, {
+          filename: "[#lambda]",
           delimiters: this._delimiters.slice(0)
         });
       } else {
@@ -417,5 +463,5 @@ export class Renderer {
 }
 
 function isFunction(x) {
-  return Object.prototype.toString.call(x) == '[object Function]';
+  return Object.prototype.toString.call(x) == "[object Function]";
 }

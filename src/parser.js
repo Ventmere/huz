@@ -1,8 +1,8 @@
-import * as TokenType from './token';
-import * as NodeType from './node';
-import { Tokenizer } from './tokenizer';
-import { visit } from './helpers';
-import { instantiateAll } from './extension';
+import * as TokenType from "./token";
+import * as NodeType from "./node";
+import { Tokenizer } from "./tokenizer";
+import { visit } from "./helpers";
+import { instantiateAll } from "./extension";
 
 class ParserContext {
   constructor(parser) {
@@ -21,6 +21,14 @@ class ParserContext {
     return this._parser._popParent();
   }
 
+  lastParent() {
+    return this._parser._lastParent;
+  }
+
+  lastParentType() {
+    return this._parser._lastParent ? this._parser._lastParent.type : null;
+  }
+
   get filename() {
     return this._parser._filename;
   }
@@ -30,7 +38,9 @@ class ParserContext {
   }
 
   get tailNode() {
-    return this._parser._stack.length > 0 ? this._parser._stack[this._parser._stack.length - 1] : null;
+    return this._parser._stack.length > 0
+      ? this._parser._stack[this._parser._stack.length - 1]
+      : null;
   }
 
   throw(message) {
@@ -42,7 +52,8 @@ export class Parser {
   constructor(opts = {}) {
     this._delimiters = opts.delimiters ? opts.delimiters : ["{{", "}}"];
     this._extensions = opts.extensions || instantiateAll(opts);
-    this._filename = opts.filename || '';
+    this._filename = opts.filename || "";
+    this._lastParent = null;
 
     if (this._extensions.length > 0) {
       this._parserContext = new ParserContext(this);
@@ -54,8 +65,8 @@ export class Parser {
   }
 
   parse(src) {
-    const rootNode = { 
-      type: NodeType.ROOT, 
+    const rootNode = {
+      type: NodeType.ROOT,
       children: []
     };
     this._src = src;
@@ -108,7 +119,7 @@ export class Parser {
   _parseNodes(src) {
     let initialStackSize = this._stack.length;
     let token;
-    const z = new Tokenizer(src, { 
+    const z = new Tokenizer(src, {
       delimiters: this._delimiters.slice(0),
       extensions: this._extensions,
       filename: this._filename
@@ -191,10 +202,15 @@ export class Parser {
     } while (token.type !== TokenType.EOF);
 
     if (this._stack.length > initialStackSize) {
-      this._throw('Unexpected EOF: sections not closed: ' + 
-        this._stack.slice(initialStackSize).map(n => `'${n.name}'`).join(', '));
+      this._throw(
+        "Unexpected EOF: sections not closed: " +
+          this._stack
+            .slice(initialStackSize)
+            .map(n => `'${n.name}'`)
+            .join(", ")
+      );
     } else if (this._stack.length < initialStackSize) {
-      this._throw('Internal error.');
+      this._throw("Internal error.");
     }
   }
 
@@ -209,6 +225,7 @@ export class Parser {
     this._addNodeToken(node);
     node.children = [];
     this._stack.push(node);
+    this._lastParent = node;
   }
 
   _popParent() {
@@ -233,7 +250,11 @@ export class Parser {
     }
 
     if (section.name !== name) {
-      this._throw(`Unexpected SECTION_CLOSE: '${name}', current section: '${section.name}'`);
+      this._throw(
+        `Unexpected SECTION_CLOSE: '${name}', current section: '${
+          section.name
+        }'`
+      );
     }
 
     section.raw = this._src.slice(section.location.endIndex, location.index);

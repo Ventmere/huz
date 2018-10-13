@@ -1,13 +1,12 @@
 // https://github.com/mustache/spec/pull/75
 
-import { Extension, register } from '../extension';
-import * as NodeType from '../node';
-import * as TokenType from '../token';
-import { walk } from '../helpers';
+import { Extension, register } from "../extension";
+import * as NodeType from "../node";
+import * as TokenType from "../token";
 
-const PARENT = 'Inheritance.PARENT';
-const BLOCK = 'Inheritance.BLOCK';
-const LEAVE_SCOPE = 'Inheritance.LEAVE_SCOPE';
+const PARENT = "Inheritance.PARENT";
+const BLOCK = "Inheritance.BLOCK";
+const LEAVE_SCOPE = "Inheritance.LEAVE_SCOPE";
 
 function isInheritanceTagType(type) {
   return type === PARENT || type === BLOCK;
@@ -26,18 +25,18 @@ export class Inheritance extends Extension {
     switch (type) {
       case TokenType.VARIABLE:
         if (name) {
-          if (name[0] === '<') {
+          if (name[0] === "<") {
             if (name.length === 1) {
-              throw new Error('Parent partial name expected');
+              throw new Error("Parent partial name expected");
             }
             token = {
               type: PARENT,
               name: name.slice(1),
               location
             };
-          } else if (name[0] === '$') {
+          } else if (name[0] === "$") {
             if (name.length === 1) {
-              throw new Error('Block name expected');
+              throw new Error("Block name expected");
             }
             token = {
               type: BLOCK,
@@ -65,22 +64,27 @@ export class Inheritance extends Extension {
         break;
 
       case BLOCK:
-        parserContext.pushParent({
-          type: BLOCK,
-          name,
-          location
-        });
+        this._pushBlock(
+          {
+            type: BLOCK,
+            name,
+            location
+          },
+          parserContext
+        );
         break;
 
       case TokenType.SECTION_CLOSE:
         const tagNode = parserContext.tailNode;
         if (tagNode === null) {
           if (isInheritanceTagType(tagNode.type)) {
-            parserContext.throw('Unexpected tag close');
+            parserContext.throw("Unexpected tag close");
           }
         } else {
           if (tagNode.name !== name) {
-            parserContext.throw(`Unexpected tag close, current tag: ${tagNode.name}`);
+            parserContext.throw(
+              `Unexpected tag close, current tag: ${tagNode.name}`
+            );
           }
           if (isInheritanceTagType(tagNode.type)) {
             parserContext.popParent();
@@ -94,8 +98,11 @@ export class Inheritance extends Extension {
             if (firstBlock && firstBlock.location.line === firstLine) {
               for (let i = 0; i < firstBlock.children.length; i++) {
                 const blockNode = firstBlock.children[i];
-                if (blockNode.type === NodeType.TEXT && /^\s*$/.test(blockNode.text)) {
-                  blockNode.text = '';
+                if (
+                  blockNode.type === NodeType.TEXT &&
+                  /^\s*$/.test(blockNode.text)
+                ) {
+                  blockNode.text = "";
                 } else {
                   break;
                 }
@@ -109,8 +116,10 @@ export class Inheritance extends Extension {
 
       case TokenType.EOF:
         if (this.top > 0) {
-          parserContext.throw('Unexpected EOF: tags not closed: ' + 
-            this.stack.map(f => f.name).join(', '));
+          parserContext.throw(
+            "Unexpected EOF: tags not closed: " +
+              this.stack.map(f => f.name).join(", ")
+          );
         }
         break;
     }
@@ -134,6 +143,14 @@ export class Inheritance extends Extension {
         this._blocks = null;
         return true;
     }
+  }
+
+  _pushBlock(node, parserContext) {
+    const parent = parserContext.lastParent();
+    if (parent && parent.type === BLOCK && parent.name === node.name) {
+      parserContext.throw(`Recursive block: '${node.name}'`);
+    }
+    parserContext.pushParent(node);
   }
 
   _handleParent(node, rendererContext) {
@@ -165,8 +182,9 @@ export class Inheritance extends Extension {
 
     rendererContext.pushNode({
       type: TokenType.PARTIAL,
-      name, location,
-      indent: node.indent,
+      name,
+      location,
+      indent: node.indent
     });
   }
 
@@ -193,13 +211,16 @@ export class Inheritance extends Extension {
     for (let i = this._parentStack.length - 1; i >= 0; i--) {
       const frame = this._parentStack[i];
       if (frame.top > top) {
-        pop ++;
+        pop++;
       } else {
         break;
       }
     }
     if (pop > 0) {
-      this._parentStack = this._parentStack.slice(0, this._parentStack.length - pop);
+      this._parentStack = this._parentStack.slice(
+        0,
+        this._parentStack.length - pop
+      );
     }
   }
 
@@ -212,7 +233,7 @@ export class Inheritance extends Extension {
       const frame = this._parentStack[i];
       if (name in frame.blocks) {
         return frame.blocks[name];
-      } 
+      }
     }
     return null;
   }
