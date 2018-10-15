@@ -146,8 +146,10 @@ export class Inheritance extends Extension {
   }
 
   _pushBlock(node, parserContext) {
-    const parent = parserContext.lastParent();
-    if (parent && parent.type === BLOCK && parent.name === node.name) {
+    const parent = parserContext.findParentNode(
+      parent => parent.type === BLOCK && parent.name === node.name
+    );
+    if (parent) {
       parserContext.throw(`Recursive block: '${node.name}'`);
     }
     parserContext.pushParent(node);

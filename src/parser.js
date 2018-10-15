@@ -21,14 +21,6 @@ class ParserContext {
     return this._parser._popParent();
   }
 
-  lastParent() {
-    return this._parser._lastParent;
-  }
-
-  lastParentType() {
-    return this._parser._lastParent ? this._parser._lastParent.type : null;
-  }
-
   get filename() {
     return this._parser._filename;
   }
@@ -43,6 +35,16 @@ class ParserContext {
       : null;
   }
 
+  findParentNode(f) {
+    for (let i = this._parser._stack.length - 1; i >= 0; i--) {
+      const item = this._parser._stack[i];
+      if (f(item)) {
+        return item;
+      }
+    }
+    return null;
+  }
+
   throw(message) {
     return this._parser._throw(message);
   }
@@ -53,7 +55,6 @@ export class Parser {
     this._delimiters = opts.delimiters ? opts.delimiters : ["{{", "}}"];
     this._extensions = opts.extensions || instantiateAll(opts);
     this._filename = opts.filename || "";
-    this._lastParent = null;
 
     if (this._extensions.length > 0) {
       this._parserContext = new ParserContext(this);
@@ -225,7 +226,6 @@ export class Parser {
     this._addNodeToken(node);
     node.children = [];
     this._stack.push(node);
-    this._lastParent = node;
   }
 
   _popParent() {
