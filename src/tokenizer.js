@@ -1,14 +1,14 @@
-import * as TokenType from './token';
-import { instantiateAll } from './extension';
-import { trimStandaloneToken } from './helpers';
+import * as TokenType from "./token";
+import { instantiateAll } from "./extension";
+import { trimStandaloneToken } from "./helpers";
 
-const STATE_NONE        = 'STATE_NONE';
-const STATE_EOF         = 'STATE_EOF';
-const STATE_TEXT        = 'STATE_TEXT';
-const STATE_TEXT_BREAK  = 'STATE_TEXT_BREAK';
-const STATE_TAG         = 'STATE_TAG';
+const STATE_NONE = "STATE_NONE";
+const STATE_EOF = "STATE_EOF";
+const STATE_TEXT = "STATE_TEXT";
+const STATE_TEXT_BREAK = "STATE_TEXT_BREAK";
+const STATE_TAG = "STATE_TAG";
 
-const DELIMITER_LEFT  = 0;
+const DELIMITER_LEFT = 0;
 const DELIMITER_RIGHT = 1;
 
 export class Tokenizer {
@@ -28,7 +28,7 @@ export class Tokenizer {
       line: 0,
       column: 0
     };
-    this._delimiters = opts.delimiters ? opts.delimiters : ['{{', '}}'];
+    this._delimiters = opts.delimiters ? opts.delimiters : ["{{", "}}"];
   }
 
   get error() {
@@ -85,7 +85,7 @@ export class Tokenizer {
       if (this._state === STATE_NONE) {
         if (this._char === null) {
           this._state = STATE_EOF;
-        } else if (this._char === '\n') {
+        } else if (this._char === "\n") {
           this._state = STATE_TEXT_BREAK;
         } else if (this._isDelimiter(DELIMITER_LEFT)) {
           this._state = STATE_TAG;
@@ -93,7 +93,6 @@ export class Tokenizer {
           this._state = STATE_TEXT;
         }
       }
-
     } while (!done);
 
     return this._error === null ? this._tokens.shift() : null;
@@ -103,24 +102,23 @@ export class Tokenizer {
 
   _handleEOF() {
     this._handleStandaloneTag();
-    this._makeToken({ 
+    this._makeToken({
       type: TokenType.EOF
     });
   }
 
   _handleTag() {
-    const [ left, right ] = this._delimiters;
+    const [left, right] = this._delimiters;
     this._skip(left.length);
     this._skipAllWhitespaces();
 
     if (this._char === null) {
-      this._setError('Unclosed tag.');
-    }
-    else if (this._isDelimiter(DELIMITER_RIGHT)) {
+      this._setError("Unclosed tag.");
+    } else if (this._isDelimiter(DELIMITER_RIGHT)) {
       this._handleEmptyTag();
     } else {
       const tagTypeChar = this._char;
-      if (tagTypeChar === '{') {
+      if (tagTypeChar === "{") {
         this._handleVariableCurly();
       } else {
         let tagContentStart = this._index - 1;
@@ -130,23 +128,31 @@ export class Tokenizer {
         }
 
         if (this._char === null) {
-          this._setError('Unclosed tag.');
+          this._setError("Unclosed tag.");
         } else {
           const content = this._src.slice(tagContentStart, this._index - 1);
           switch (tagTypeChar) {
-            case '>': this._handleSimpleTag(TokenType.PARTIAL, content); break;
-            case '^': this._handleSimpleTag(TokenType.INVERTED_SECTION_OPEN, content); break;
-            case '#': this._handleSimpleTag(TokenType.SECTION_OPEN, content); break;
-            case '/': this._handleSimpleTag(TokenType.SECTION_CLOSE, content); break;
+            case ">":
+              this._handleSimpleTag(TokenType.PARTIAL, content);
+              break;
+            case "^":
+              this._handleSimpleTag(TokenType.INVERTED_SECTION_OPEN, content);
+              break;
+            case "#":
+              this._handleSimpleTag(TokenType.SECTION_OPEN, content);
+              break;
+            case "/":
+              this._handleSimpleTag(TokenType.SECTION_CLOSE, content);
+              break;
 
-            case '!':
+            case "!":
               this._handleComment(content.substr(1));
               break;
 
-            case '=':
+            case "=":
               this._handleDelimiterChange(content);
               break;
-            case '&':
+            case "&":
               this._handleVariable(content.substr(1), true);
               break;
             default:
@@ -169,13 +175,13 @@ export class Tokenizer {
   _handleDelimiterChange(content) {
     const newDelimiters = extractNewDelimiters(content);
     if (newDelimiters === null) {
-      this._setError('Invalid change delimiter syntax.');
+      this._setError("Invalid change delimiter syntax.");
     } else {
-      const [ left, right ] = newDelimiters;
+      const [left, right] = newDelimiters;
       this._delimiters = newDelimiters;
       this._makeToken({
         type: TokenType.DELIMITER_CHANGE,
-        delimiters: [ left, right ]
+        delimiters: [left, right]
       });
     }
   }
@@ -194,15 +200,15 @@ export class Tokenizer {
   _handleVariableCurly() {
     this._read(); //eat '{'
     const begin = this._index - 1;
-    const d = this._distance('}');
+    const d = this._distance("}");
     if (d === -1) {
-      this._setError('Unclosed variable tag: missingright curly.');
+      this._setError("Unclosed variable tag: missingright curly.");
     } else {
       const content = this._src.slice(begin, begin + d);
       this._skip(d + 1); //skip '}'
       this._skipAllWhitespaces();
       if (!this._isDelimiter(DELIMITER_RIGHT)) {
-        this._setError('Unclosed variable: missing right delimiter.');
+        this._setError("Unclosed variable: missing right delimiter.");
       } else {
         this._makeToken({
           type: TokenType.UNESCAPED_VARIABLE,
@@ -215,7 +221,7 @@ export class Tokenizer {
   _handleEmptyTag() {
     this._makeToken({
       type: TokenType.VARIABLE,
-      name: ''
+      name: ""
     });
   }
 
@@ -233,10 +239,10 @@ export class Tokenizer {
     do {
       const c = this._char;
 
-      if (c === null || c === '\n' || this._isDelimiter(DELIMITER_LEFT)) {
+      if (c === null || c === "\n" || this._isDelimiter(DELIMITER_LEFT)) {
         done = true;
       } else {
-        length ++;
+        length++;
       }
 
       if (!done) {
@@ -255,7 +261,7 @@ export class Tokenizer {
   _handleTextBreak() {
     this._makeToken({
       type: TokenType.TEXT,
-      text: '\n'
+      text: "\n"
     });
     this._read();
     this._handleStandaloneTag();
@@ -267,21 +273,21 @@ export class Tokenizer {
   }
 
   // Helpers
-  _dump(t = '') {
-    console.log(t +'>'+this._src.slice(this._index - 1));
+  _dump(t = "") {
+    console.log(t + ">" + this._src.slice(this._index - 1));
   }
 
   _read() {
     if (this._index < this._src.length) {
-      if (this._char === '\n') {
-        this._line ++;
+      if (this._char === "\n") {
+        this._line++;
         this._column = 0;
       } else {
-        this._column ++;
+        this._column++;
       }
 
       this._char = this._src[this._index];
-      this._index ++;
+      this._index++;
     } else {
       this._char = null;
     }
@@ -296,7 +302,7 @@ export class Tokenizer {
   }
 
   _skip(n) {
-    for (let i = 0; i < n; i ++) {
+    for (let i = 0; i < n; i++) {
       this._read();
     }
   }
@@ -343,7 +349,10 @@ export class Tokenizer {
     token.filename = this._filename;
     const { index, line, column } = this._location;
     token.location = {
-      index, line, column
+      filename: this._filename,
+      index,
+      line,
+      column
     };
     if (this._extensions.length) {
       try {

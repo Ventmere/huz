@@ -59,6 +59,7 @@ export class Renderer {
   constructor(src, opts = {}) {
     //if this is true, src and values in partials are parsed tree, not string
     this._parsed = opts.parsed || false;
+    this._filename = opts.filename;
 
     this._partials = opts.partials || {};
     this._delimiters = opts.delimiters ? opts.delimiters : ["{{", "}}"];
@@ -97,7 +98,9 @@ export class Renderer {
     this._pushContext(context);
 
     //push root nodes
-    const rootNode = this._parsed ? this._src : this._parse(this._src);
+    const rootNode = this._parsed
+      ? this._src
+      : this._parse(this._src, { filename: this._filename });
     this._stack = rootNode.children.slice(0).reverse();
 
     let node_count = 0;
@@ -457,6 +460,7 @@ export class Renderer {
 
   _throw(message, location) {
     const e = new Error(message);
+    e.filename = location.filename;
     e.location = location;
     throw e;
   }

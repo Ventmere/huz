@@ -1,15 +1,15 @@
-import { Parser } from './parser';
-import { Renderer } from './renderer';
-import * as TokenType from './token';
-import * as NodeType from './node';
-import * as Helpers from './helpers';
-import { register } from './extension';
+import { Parser } from "./parser";
+import { Renderer } from "./renderer";
+import * as TokenType from "./token";
+import * as NodeType from "./node";
+import * as Helpers from "./helpers";
+import { register } from "./extension";
 
-export { Tokenizer } from './tokenizer';
+export { Tokenizer } from "./tokenizer";
 export { Parser, Renderer, TokenType, NodeType };
 
-export { Extension } from './extension';
-import { Inheritance } from './extensions/inheritance';
+export { Extension } from "./extension";
+import { Inheritance } from "./extensions/inheritance";
 
 register(Inheritance);
 

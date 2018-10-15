@@ -21,16 +21,21 @@ describe("Extension: Inheritance", () => {
 
   it("recursive block", function() {
     expect(function() {
-      render(
-        "{{<t}}{{$b}}{{$c}}{{$b}}{{/b}}{{/c}}{{/b}}{{/t}}{{<t}}{{$b}}2{{/b}}{{/t}}",
-        {},
-        {
-          partials: {
-            t: `{{$b}}default{{/b}}`
-          },
-          filename: "123"
-        }
-      );
+      try {
+        render(
+          "{{<t}}{{$b}}{{$c}}{{$b}}{{/b}}{{/c}}{{/b}}{{/t}}{{<t}}{{$b}}2{{/b}}{{/t}}",
+          {},
+          {
+            partials: {
+              t: `{{$b}}default{{/b}}`
+            },
+            filename: "123"
+          }
+        );
+      } catch (e) {
+        expect(e.filename).to.equal("123");
+        throw e;
+      }
     }).to.throw("Recursive block: 'b'");
   });
 });

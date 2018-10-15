@@ -217,7 +217,7 @@ export class Parser {
 
   _throw(message) {
     const e = new Error(message);
-    e.filename = this._lastToken.filename;
+    e.filename = this._lastToken.location.filename;
     e.location = this._lastToken.location;
     throw e;
   }
