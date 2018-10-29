@@ -35,9 +35,13 @@ class ParserContext {
       : null;
   }
 
-  /// deprecated
+  /// deprecated, use `parentNode` instead
   get tailNode() {
     return this.parentNode;
+  }
+
+  get src() {
+    return this._parser._src;
   }
 
   findParentNode(f) {
