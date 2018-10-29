@@ -54,8 +54,8 @@ class ParserContext {
     return null;
   }
 
-  throw(message) {
-    return this._parser._throw(message);
+  throw(message, location) {
+    return this._parser._throw(message, location);
   }
 }
 
@@ -224,10 +224,11 @@ export class Parser {
     }
   }
 
-  _throw(message) {
+  _throw(message, location) {
+    location = location || this._lastToken.location;
     const e = new Error(message);
-    e.filename = this._lastToken.location.filename;
-    e.location = this._lastToken.location;
+    e.filename = location.filename;
+    e.location = location;
     throw e;
   }
 
