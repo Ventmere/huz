@@ -35,6 +35,11 @@ class ParserContext {
       : null;
   }
 
+  /// deprecated
+  get tailNode() {
+    return this.parentNode;
+  }
+
   findParentNode(f) {
     for (let i = this._parser._stack.length - 1; i >= 0; i--) {
       const item = this._parser._stack[i];
