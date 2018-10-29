@@ -38,4 +38,21 @@ describe("Extension: Inheritance", () => {
       }
     }).to.throw("Recursive block: 'b'");
   });
+
+  it("unexpected_tag_close", function() {
+    expect(function() {
+      try {
+        render(
+          "{{<t}}{{/die}}",
+          {},
+          {
+            filename: "123"
+          }
+        );
+      } catch (e) {
+        expect(e.filename).to.equal("123");
+        throw e;
+      }
+    }).to.throw("Unexpected tag close 'die', current tag: 't'");
+  });
 });

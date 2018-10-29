@@ -29,7 +29,7 @@ class ParserContext {
     return this._parser._stack.length;
   }
 
-  get tailNode() {
+  get parentNode() {
     return this._parser._stack.length > 0
       ? this._parser._stack[this._parser._stack.length - 1]
       : null;

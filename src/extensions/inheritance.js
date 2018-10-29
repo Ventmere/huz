@@ -75,42 +75,36 @@ export class Inheritance extends Extension {
         break;
 
       case TokenType.SECTION_CLOSE:
-        const tagNode = parserContext.tailNode;
-        if (tagNode === null) {
-          if (isInheritanceTagType(tagNode.type)) {
-            parserContext.throw("Unexpected tag close");
-          }
-        } else {
-          if (tagNode.name !== name) {
-            parserContext.throw(
-              `Unexpected tag close, current tag: ${tagNode.name}`
-            );
-          }
-          if (isInheritanceTagType(tagNode.type)) {
-            parserContext.popParent();
-            tagNode.location.endIndex = location.endIndex;
-            tagNode.location.endLine = location.endLine;
-            parserContext.appendNode(tagNode);
+        const tagNode = parserContext.parentNode;
+        if (tagNode.name !== name) {
+          parserContext.throw(
+            `Unexpected tag close '${name}', current tag: '${tagNode.name}'`
+          );
+        }
+        if (isInheritanceTagType(tagNode.type)) {
+          parserContext.popParent();
+          tagNode.location.endIndex = location.endIndex;
+          tagNode.location.endLine = location.endLine;
+          parserContext.appendNode(tagNode);
 
-            //TODO move this to visit, handle whitespaces after Parent close tag.
-            const firstLine = tagNode.location.line;
-            const firstBlock = tagNode.children.find(c => c.type === BLOCK);
-            if (firstBlock && firstBlock.location.line === firstLine) {
-              for (let i = 0; i < firstBlock.children.length; i++) {
-                const blockNode = firstBlock.children[i];
-                if (
-                  blockNode.type === NodeType.TEXT &&
-                  /^\s*$/.test(blockNode.text)
-                ) {
-                  blockNode.text = "";
-                } else {
-                  break;
-                }
+          //TODO move this to visit, handle whitespaces after Parent close tag.
+          const firstLine = tagNode.location.line;
+          const firstBlock = tagNode.children.find(c => c.type === BLOCK);
+          if (firstBlock && firstBlock.location.line === firstLine) {
+            for (let i = 0; i < firstBlock.children.length; i++) {
+              const blockNode = firstBlock.children[i];
+              if (
+                blockNode.type === NodeType.TEXT &&
+                /^\s*$/.test(blockNode.text)
+              ) {
+                blockNode.text = "";
+              } else {
+                break;
               }
             }
-
-            handled = true;
           }
+
+          handled = true;
         }
         break;
 
