@@ -76,7 +76,7 @@ export class Inheritance extends Extension {
 
       case TokenType.SECTION_CLOSE:
         const tagNode = parserContext.parentNode;
-        if (tagNode.name !== name) {
+        if (isInheritanceTagType(tagNode.type) && tagNode.name !== name) {
           parserContext.throw(
             `Unexpected tag close '${name}', current tag: '${tagNode.name}'`
           );
@@ -105,15 +105,6 @@ export class Inheritance extends Extension {
           }
 
           handled = true;
-        }
-        break;
-
-      case TokenType.EOF:
-        if (this.top > 0) {
-          parserContext.throw(
-            "Unexpected EOF: tags not closed: " +
-              this.stack.map(f => f.name).join(", ")
-          );
         }
         break;
     }

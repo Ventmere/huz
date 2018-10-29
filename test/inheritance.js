@@ -39,7 +39,7 @@ describe("Extension: Inheritance", () => {
     }).to.throw("Recursive block: 'b'");
   });
 
-  it("unexpected_tag_close", function() {
+  it("unexpected tag close", function() {
     expect(function() {
       try {
         render(
