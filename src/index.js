@@ -10,8 +10,10 @@ export { Parser, Renderer, TokenType, NodeType };
 
 export { Extension } from "./extension";
 import { Inheritance } from "./extensions/inheritance";
+// import { Section } from "./extensions/section";
 
 register(Inheritance);
+// register(Section);
 
 export function parse(src, opts) {
   const parser = new Parser(opts);

@@ -18,8 +18,8 @@ export class Tokenizer {
     this._index = 0;
     this._char = null;
     this._tokens = [];
-    this._line = 0;
-    this._column = 0;
+    this._line = 1;
+    this._column = 1;
     this._state = STATE_NONE;
     this._error = null;
     this._filename = opts.filename;

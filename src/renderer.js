@@ -34,8 +34,8 @@ class RenderContext {
     this._renderer._pushNode(node);
   }
 
-  pushContext(ctx) {
-    this._renderer._pushContext(ctx);
+  pushContext(ctx, sp) {
+    this._renderer._pushContext(ctx, sp);
   }
 
   appendText(text) {
@@ -276,11 +276,17 @@ export class Renderer {
     });
   }
 
-  _pushContext(context) {
+  _pushContext(context, sp = this._stack.length) {
+    if (this._contextStack.length) {
+      sp = Math.min(
+        Math.max(this._contextStack[this._contextStack.length - 1].sp, sp),
+        this._stack.length
+      );
+    }
     return (
       this._contextStack.push({
         context,
-        sp: this._stack.length
+        sp
       }) - 1
     );
   }
@@ -310,7 +316,7 @@ export class Renderer {
   }
 
   _checkStacks() {
-    if (
+    while (
       this._stack.length < this._contextStack[this._contextStack.length - 1].sp
     ) {
       this._contextStack.pop();
