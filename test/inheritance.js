@@ -1,4 +1,4 @@
-import { render } from "../src";
+import { render, parse } from "../src";
 import { defineTests } from "./spec";
 import { expect } from "chai";
 
@@ -54,5 +54,26 @@ describe("Extension: Inheritance", () => {
         throw e;
       }
     }).to.throw("Unexpected tag close 'die', current tag: 't'");
+  });
+
+  it("parse block content", function() {
+    const node = parse(`<div>
+      {{$block1}}one{{/block1}}
+      {{$block2}}two{{/block2}}
+    </div>`);
+
+    const blocks = node.children
+      .filter(c => c.type === "Inheritance.BLOCK")
+      .map(c => {
+        return {
+          name: c.name,
+          content: c.content
+        };
+      });
+
+    expect(blocks).to.deep.equal([
+      { content: "one", name: "block1" },
+      { content: "two", name: "block2" }
+    ]);
   });
 });

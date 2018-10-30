@@ -67,6 +67,7 @@ export class Inheritance extends Extension {
         this._pushBlock(
           {
             type: BLOCK,
+            content: "",
             name,
             location
           },
@@ -82,6 +83,14 @@ export class Inheritance extends Extension {
           );
         }
         if (isInheritanceTagType(tagNode.type)) {
+          if (tagNode.type === BLOCK) {
+            const content = parserContext.src.slice(
+              tagNode.location.endIndex,
+              location.index
+            );
+            tagNode.content = content;
+          }
+
           parserContext.popParent();
           tagNode.location.endIndex = location.endIndex;
           tagNode.location.endLine = location.endLine;
