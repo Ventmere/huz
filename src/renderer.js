@@ -7,7 +7,7 @@ import { instantiateAll } from "./extension";
 const REPEATER_NODE_TYPE = "_REPEATER";
 const MAX_PARTIAL_STACK = 10;
 const MAX_LAMBDA_STACK = 255;
-const MAX_NODE_COUNT = 3000;
+const MAX_NODE_COUNT = 30000;
 
 class RenderContext {
   constructor(renderer) {
